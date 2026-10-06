@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and virtual environments
+.pytest_cache/
+.cache/
+.venv/
+venv/
+env/
+ENV/
+
+# Streamlit secrets (local only)
+.streamlit/secrets.toml
+
+# Environment variables
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Antigravity internal
+.gemini/
+.system_generated/

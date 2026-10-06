@@ -1,0 +1,69 @@
+{
+  "current_bracket": 2,
+  "current_bracket_score": 2.4,
+  "target_bracket": 3,
+  "overall_deviation_score": 4.8,
+  "cmc_detail": {
+    "current_value": 2.6,
+    "target_benchmark_range": "2.0 - 2.8",
+    "gap": 0.2,
+    "status": "OK"
+  },
+  "lands_detail": {
+    "current_value": 6.0,
+    "target_benchmark_range": "30 - 34",
+    "gap": -26.0,
+    "status": "Déficit de tierras"
+  },
+  "ramp_detail": {
+    "current_value": 9.0,
+    "target_benchmark_range": ">=12",
+    "gap": 3.0,
+    "status": "Déficit de rampa"
+  },
+  "fast_mana_detail": {
+    "current_value": 0.0,
+    "target_benchmark_range": ">=2",
+    "gap": 2.0,
+    "status": "Déficit de fast mana"
+  },
+  "interaction_detail": {
+    "current_value": 3.0,
+    "target_benchmark_range": ">=12",
+    "gap": 9.0,
+    "status": "Déficit de interacción"
+  },
+  "tutors_detail": {
+    "current_value": 7.0,
+    "target_benchmark_range": ">=4",
+    "gap": 0.0,
+    "status": "OK"
+  },
+  "board_wipes_detail": {
+    "current_value": 1.0,
+    "target_benchmark_range": "1 - 3",
+    "gap": -2.0,
+    "status": "OK"
+  },
+  "combos_status": "Se sugiere incorporar un combo compacto de 2-3 cartas para cerrar partidas rápidamente.",
+  "budget_detail": {
+    "current_deck_usd": 561.95,
+    "max_budget_usd": 600.0,
+    "remaining_budget_usd": 38.05,
+    "is_exceeded": false,
+    "message": "Presupuesto disponible para upgrades: $38.05 USD."
+  },
+  "untouchable_cards_count": 3,
+  "recommendations": [
+    "Elevar nivel de poder: El mazo actual está en Bracket 2: Mid-Power / Casual Optimizado y el objetivo es Bracket 3: High-Power / Optimized.",
+    "Añadir tierras: Faltan aproximadamente 26 tierras (actualmente 6, sugerido 30-34).",
+    "Añadir rampa eficiente: Incorporar al menos 3 aceleradores de maná de 1-2 CMC (dorks o rocas).",
+    "Incorporar Fast Mana: Añadir 2 piezas (e.g., Mana Vault, Chrome Mox, Lotus Petal) para acelerar turnos clave.",
+    "Reforzar interacción: Añadir 9 respuestas instantáneas de bajo coste (<=2 CMC o gratuitas).",
+    "Cartas intocables respetadas (3): No serán sugeridas para sustitución."
+  ],
+  "diagnosis_reasons": [
+    "Curva de maná equilibrada (Avg CMC 2.60)",
+    "Alta densidad de tutores (7 tutores)"
+  ]
+}
