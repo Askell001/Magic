@@ -30,6 +30,18 @@
     "is_land": false
   },
   {
+    "name": "Esper Sentinel",
+    "color": "White",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Armageddon",
+    "color": "White",
+    "type": "Sorcery",
+    "is_land": false
+  },
+  {
     "name": "Cyclonic Rift",
     "color": "Blue",
     "type": "Instant",
@@ -75,6 +87,42 @@
     "name": "Mystical Tutor",
     "color": "Blue",
     "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Mystic Remora",
+    "color": "Blue",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Mana Drain",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Pact of Negation",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Mindbreak Trap",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Stasis",
+    "color": "Blue",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Back to Basics",
+    "color": "Blue",
+    "type": "Enchantment",
     "is_land": false
   },
   {
@@ -126,6 +174,30 @@
     "is_land": false
   },
   {
+    "name": "Demonic Consultation",
+    "color": "Black",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Tainted Pact",
+    "color": "Black",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Necropotence",
+    "color": "Black",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Deadly Rollick",
+    "color": "Black",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
     "name": "Jeska's Will",
     "color": "Red",
     "type": "Sorcery",
@@ -135,6 +207,36 @@
     "name": "Underworld Breach",
     "color": "Red",
     "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Dockside Extortionist",
+    "color": "Red",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Deflecting Swat",
+    "color": "Red",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Blood Moon",
+    "color": "Red",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Dualcaster Mage",
+    "color": "Red",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Twinflame",
+    "color": "Red",
+    "type": "Sorcery",
     "is_land": false
   },
   {
@@ -154,6 +256,24 @@
     "color": "Green",
     "type": "Land",
     "is_land": true
+  },
+  {
+    "name": "Sylvan Library",
+    "color": "Green",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Food Chain",
+    "color": "Green",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Worldly Tutor",
+    "color": "Green",
+    "type": "Instant",
+    "is_land": false
   },
   {
     "name": "Kinnan, Bonder Prodigy",
@@ -177,6 +297,24 @@
     "name": "Grand Arbiter Augustin IV",
     "color": "Multicolor",
     "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Sol Ring",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Mana Crypt",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Jeweled Lotus",
+    "color": "Colorless",
+    "type": "Artifact",
     "is_land": false
   },
   {
@@ -228,10 +366,46 @@
     "is_land": false
   },
   {
+    "name": "Mox Opal",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Mox Amber",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
     "name": "Mana Vault",
     "color": "Colorless",
     "type": "Artifact",
     "is_land": false
+  },
+  {
+    "name": "Winter Orb",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Static Orb",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Isochron Scepter",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Urza's Saga",
+    "color": "Colorless",
+    "type": "Land",
+    "is_land": true
   },
   {
     "name": "Glacial Chasm",
