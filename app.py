@@ -40,6 +40,7 @@ from mtg_deck_optimizer.analytics.advanced_analytics import Advanced_Deck_Analyt
 from mtg_deck_optimizer.analytics.mulligan_simulator import MulliganSimulator
 from mtg_deck_optimizer.analytics.tradeoff_engine import TradeoffEngine
 from mtg_deck_optimizer.analytics.land_balance_engine import LandBalanceEngine, LandBalanceReport
+from seed_banned_cards import validate_banned_cards
 
 # -----------------------------------------------------------------------------
 # Streamlit UI Setup & Global Theming
@@ -320,10 +321,38 @@ if "Optimizar Mazo" in app_mode:
         untouchable_cards = [c.strip() for c in untouchables_str.split(",") if c.strip()]
 
     # -------------------------------------------------------------------------
-    # AUDITORÍA PREVIA EN TIEMPO REAL & ALERTA ROJA ANTES DEL PROCESAMIENTO
+    # AUDITORÍA PREVIA EN TIEMPO REAL: BANLIST & REGLAS DE BRACKET
     # -------------------------------------------------------------------------
     pre_audit_report: Optional[BracketAuditReport] = None
+    has_banned_block = False
+
     if deck_text_input.strip():
+        # 1. Absolute Banlist Validation (MongoDB/Cache)
+        ban_eval = validate_banned_cards(deck_text_input)
+        if not ban_eval["is_legal"]:
+            has_banned_block = True
+            st.markdown(
+                f"""
+                <div class="alert-box-red" style="border: 3px solid #da3633; background:#490202;">
+                    <div style="font-size:1.25rem; font-weight:bold; margin-bottom:8px; color:#ff7b72;">
+                        🚨 BLOQUEO PRE-PROCESAMIENTO: VIOLACIÓN CRÍTICA DE BANLIST OFICIAL WOTC
+                    </div>
+                    <div style="font-size:1.0rem; margin-bottom:10px; line-height:1.4;">
+                        {ban_eval["error_message"]}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("#### 🚫 Cartas Prohibidas Detectadas (No legales en Commander):")
+            b_cols = st.columns(min(len(ban_eval["banned_names"]), 4) if ban_eval["banned_names"] else 1)
+            for b_idx, b_name in enumerate(ban_eval["banned_names"]):
+                with b_cols[b_idx % len(b_cols)]:
+                    st.markdown(f"<span class='badge-out'>🚫 BANNED</span> **{b_name}**", unsafe_allow_html=True)
+                    st.image(get_card_image_url(b_name), use_container_width=True)
+
+            st.error("⛔ Debes retirar las cartas prohibidas de tu lista arriba para poder continuar con el análisis y la optimización.")
+
         # Quick parse to evaluate bracket violations before user clicks process
         pre_cmdr = cmdr_input.strip() if cmdr_input.strip() else None
         if not pre_cmdr:
@@ -340,7 +369,7 @@ if "Optimizar Mazo" in app_mode:
         )
         pre_audit_report = WOTC_Bracket_Engine.audit_deck(pre_deck, opt_bracket_num)
 
-        if not pre_audit_report.is_legal_for_bracket:
+        if not pre_audit_report.is_legal_for_bracket and not has_banned_block:
             st.markdown(
                 f"""
                 <div class="alert-box-red">
