@@ -61,7 +61,7 @@ def test_ai_prompt_builder():
     assert "user" in prompts
     assert "The Ur-Dragon" in prompts["user"]
     assert "$350.00 USD" in prompts["user"]
-    assert "Bracket 3: High-Power / Optimized" in prompts["user"]
+    assert "Bracket 3" in prompts["user"]
     assert "cuts" in prompts["user"]
     assert "inclusions" in prompts["user"]
 

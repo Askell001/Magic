@@ -20,7 +20,8 @@ def test_game_changers_database_structure():
     assert "Rhystic Study" in GAME_CHANGERS_DATABASE
 
     thoracle = GAME_CHANGERS_DATABASE["Thassa's Oracle"]
-    assert thoracle.allowed_in_brackets == [4]
+    assert 4 in thoracle.allowed_in_brackets
+    assert 5 in thoracle.allowed_in_brackets
     assert "Laboratory Maniac" in thoracle.suggested_replacements_by_bracket[3]
 
 

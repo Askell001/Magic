@@ -23,15 +23,16 @@ def ask_user_intent_cli(
 
     # 1. Target Bracket
     print("\n[1] ¿A qué Bracket (Nivel de Poder) deseas llevar este mazo?")
-    print("  1) Bracket 1 (Jank / Casual): Sin combos, presupuesto bajo, curva relajada.")
-    print("  2) Bracket 2 (Mid-Power / Casual Optimizado): Sinergia clara, sin fast mana.")
-    print("  3) Bracket 3 (High-Power / Optimized): Fast mana, tutores, combos eficientes.")
-    print("  4) Bracket 4 (cEDH / Máximo Nivel): Máxima interactividad, wincons t2-t4.")
+    print("  1) Bracket 1 (Exhibition / Ultra-Casual): 0 Game Changers, 0 Combos 2-cartas, 0 MLD, 0 Extra turns.")
+    print("  2) Bracket 2 (Core / Precon Promedio): 0 Game Changers, 0 Combos 2-cartas, 0 MLD.")
+    print("  3) Bracket 3 (Upgraded / Precon Mejorado): Máx 3 Game Changers, 0 MLD, combos lentos.")
+    print("  4) Bracket 4 (Optimized / Alta Potencia): Sin restricciones de Game Changers ni combos.")
+    print("  5) Bracket 5 (cEDH / Torneo Meta): Eficiencia absoluta, wincons turnos 1-3.")
     
-    bracket_choice_str = input_func(f"\nSelecciona una opción [1-4] (default {default_bracket.value}): ").strip()
+    bracket_choice_str = input_func(f"\nSelecciona una opción [1-5] (default {default_bracket.value}): ").strip()
     try:
         tier_val = int(bracket_choice_str) if bracket_choice_str else default_bracket.value
-        if tier_val not in (1, 2, 3, 4):
+        if tier_val not in (1, 2, 3, 4, 5):
             tier_val = default_bracket.value
     except ValueError:
         tier_val = default_bracket.value

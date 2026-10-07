@@ -150,3 +150,8 @@ class Deck(BaseModel):
 
     def get_all_items(self) -> List[DeckItem]:
         return self.commanders + self.maindeck + self.sideboard + self.maybeboard
+
+    @property
+    def items(self) -> List[DeckItem]:
+        """Convenient accessor for all deck items across sections."""
+        return self.get_all_items()

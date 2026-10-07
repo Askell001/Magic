@@ -16,6 +16,15 @@ from .game_changers import (
     GameChangerViolation,
     GameChangersEvaluator,
 )
+from .wotc_bracket_engine import (
+    WOTC_Bracket_Engine,
+    WotcBracketEngine,
+    BracketAuditReport,
+    BracketViolation,
+    CardRemovalRecommendation,
+    GameChangerAuditDetail,
+    ViolationCategory,
+)
 
 __all__ = [
     "BracketTier",
@@ -36,4 +45,11 @@ __all__ = [
     "GameChangerDefinition",
     "GameChangerViolation",
     "GameChangersEvaluator",
+    "WOTC_Bracket_Engine",
+    "WotcBracketEngine",
+    "BracketAuditReport",
+    "BracketViolation",
+    "CardRemovalRecommendation",
+    "GameChangerAuditDetail",
+    "ViolationCategory",
 ]

@@ -217,62 +217,76 @@ class CardRoleClassifier:
         avg_cmc_nl = sum(non_land_cmcs) / len(non_land_cmcs) if non_land_cmcs else 3.5
         combos = cls.detect_combos(active_items)
 
-        # Compute Continuous Power Score (1.0 to 4.0)
+        # Compute Continuous Power Score (1.0 to 5.0)
         score = 1.0
         reasons: List[str] = []
 
         # 1. Base score from Mana Curve (lower CMC = higher score)
-        if avg_cmc_nl <= 1.8:
-            score += 1.8
-            reasons.append(f"Curva de maná ultra-eficiente (Avg CMC {avg_cmc_nl:.2f})")
-        elif avg_cmc_nl <= 2.4:
-            score += 1.2
-            reasons.append(f"Curva de maná baja y optimizada (Avg CMC {avg_cmc_nl:.2f})")
-        elif avg_cmc_nl <= 3.0:
-            score += 0.7
-            reasons.append(f"Curva de maná equilibrada (Avg CMC {avg_cmc_nl:.2f})")
+        if avg_cmc_nl <= 1.7:
+            score += 2.2
+            reasons.append(f"Curva de maná ultra-eficiente de nivel torneo (Avg CMC {avg_cmc_nl:.2f})")
+        elif avg_cmc_nl <= 2.2:
+            score += 1.6
+            reasons.append(f"Curva de maná baja y altamente optimizada (Avg CMC {avg_cmc_nl:.2f})")
+        elif avg_cmc_nl <= 2.8:
+            score += 1.0
+            reasons.append(f"Curva de maná equilibrada y ágil (Avg CMC {avg_cmc_nl:.2f})")
+        elif avg_cmc_nl <= 3.4:
+            score += 0.5
+            reasons.append(f"Curva de maná estándar de nivel preconstruido (Avg CMC {avg_cmc_nl:.2f})")
         else:
-            reasons.append(f"Curva de maná alta típica de juego casual (Avg CMC {avg_cmc_nl:.2f})")
+            reasons.append(f"Curva de maná alta típica de juego casual exhibition (Avg CMC {avg_cmc_nl:.2f})")
 
         # 2. Fast mana contribution
-        if fast_mana_count >= 4:
-            score += 0.8
-            reasons.append(f"Alta presencia de Fast Mana ({fast_mana_count} piezas)")
+        if fast_mana_count >= 5:
+            score += 1.0
+            reasons.append(f"Máxima presencia de Fast Mana ({fast_mana_count} piezas)")
+        elif fast_mana_count >= 2:
+            score += 0.6
+            reasons.append(f"Presencia sólida de Fast Mana ({fast_mana_count} piezas)")
         elif fast_mana_count >= 1:
-            score += 0.4
+            score += 0.3
             reasons.append(f"Presencia moderada de Fast Mana ({fast_mana_count} piezas)")
 
         # 3. Tutor density contribution
-        if tutor_count >= 6:
-            score += 0.7
+        if tutor_count >= 7:
+            score += 0.9
+            reasons.append(f"Densidad competitiva de tutores ({tutor_count} tutores)")
+        elif tutor_count >= 4:
+            score += 0.5
             reasons.append(f"Alta densidad de tutores ({tutor_count} tutores)")
-        elif tutor_count >= 3:
-            score += 0.4
+        elif tutor_count >= 2:
+            score += 0.3
             reasons.append(f"Tutores clave incluidos ({tutor_count} tutores)")
 
         # 4. Combos detection
         if combos:
-            score += 0.8
+            score += 0.9
             combo_names = [" + ".join(c) for c in combos]
             reasons.append(f"Combos infinitos/compactos detectados: {', '.join(combo_names)}")
 
         # 5. Free / Cheap interaction
-        if free_interaction_count >= 5:
-            score += 0.5
+        if free_interaction_count >= 6:
+            score += 0.7
             reasons.append(f"Fuerte suite de interacción gratuita/eficiente ({free_interaction_count} cartas)")
+        elif free_interaction_count >= 3:
+            score += 0.4
+            reasons.append(f"Interacción barata presente ({free_interaction_count} cartas)")
 
-        # Clamp score between 1.0 and 4.0
-        score = max(1.0, min(4.0, round(score, 2)))
+        # Clamp score between 1.0 and 5.0
+        score = max(1.0, min(5.0, round(score, 2)))
 
-        # Determine discrete bracket tier
-        if score >= 3.4 or (combos and fast_mana_count >= 3 and avg_cmc_nl < 2.2):
-            tier = BracketTier.BRACKET_4_CEDH
-        elif score >= 2.5:
-            tier = BracketTier.BRACKET_3_HIGH_POWER
-        elif score >= 1.6:
-            tier = BracketTier.BRACKET_2_MID_POWER
+        # Determine discrete bracket tier (1 to 5)
+        if score >= 4.4 or (combos and fast_mana_count >= 4 and avg_cmc_nl <= 2.0 and tutor_count >= 5):
+            tier = BracketTier.BRACKET_5_CEDH
+        elif score >= 3.5 or (combos and fast_mana_count >= 2 and avg_cmc_nl <= 2.5):
+            tier = BracketTier.BRACKET_4_OPTIMIZED
+        elif score >= 2.6 or (fast_mana_count >= 1 or tutor_count >= 3 or avg_cmc_nl <= 2.8):
+            tier = BracketTier.BRACKET_3_UPGRADED
+        elif score >= 1.7 or tutor_count >= 1 or avg_cmc_nl <= 3.5:
+            tier = BracketTier.BRACKET_2_CORE
         else:
-            tier = BracketTier.BRACKET_1_CASUAL
+            tier = BracketTier.BRACKET_1_EXHIBITION
 
         return DeckClassification(
             lands_count=lands_count,

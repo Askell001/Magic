@@ -1,30 +1,40 @@
 """
-Streamlit Web Application for MTG Commander Studio & Advanced Analytics Suite.
-Complete Graphical UI with Scryfall Images, Visual Trade-offs, WotC Rules Validation,
-Game Changers Database & Downshifting Transitions, Land Balance (Deficit/Overload) Engine,
-Monte Carlo 1,000-Draw Simulator, and Deckbuilder from scratch.
+MTG Commander Studio & Visual Analytics Suite
+Official WOTC 5-Bracket Compliance, Real-time Deck Auditing, AI Optimization & Deckbuilder Engine.
 """
 
 import time
-import urllib.parse
-import streamlit as st
+import json
+import logging
 import pandas as pd
-from typing import List, Optional, Any
+import streamlit as st
+from typing import List, Dict, Any, Optional, Set
 
-from mtg_deck_optimizer.models.deck import Deck, DeckSection, DeckItem
 from mtg_deck_optimizer.service import DeckIngestionService
+from mtg_deck_optimizer.models.deck import Deck, DeckItem, DeckSection
 from mtg_deck_optimizer.rules.wotc_rules_engine import WOTC_Commander_Rules_Engine
 from mtg_deck_optimizer.deckbuilder.generator import MTGDeckbuilderGenerator
 from mtg_deck_optimizer.deckbuilder.models import DeckbuilderParams
 from mtg_deck_optimizer.deckbuilder.archetype_database import ARCHETYPE_DEFINITIONS
 from mtg_deck_optimizer.exporter.deck_exporter import DeckExporter
 from mtg_deck_optimizer.intent import build_user_intent
-from mtg_deck_optimizer.brackets.standards import BracketTier
+from mtg_deck_optimizer.brackets.standards import (
+    BracketTier,
+    BRACKET_BENCHMARKS,
+    GAME_CHANGERS_MAX_ALLOWED,
+)
 from mtg_deck_optimizer.brackets.game_changers import (
     GAME_CHANGERS_DATABASE,
     GameChangersEvaluator,
     GameChangerViolation,
     GameChangerAuditItem,
+)
+from mtg_deck_optimizer.brackets.wotc_bracket_engine import (
+    WOTC_Bracket_Engine,
+    BracketAuditReport,
+    BracketViolation,
+    CardRemovalRecommendation,
+    ViolationCategory,
 )
 from mtg_deck_optimizer.analytics.advanced_analytics import Advanced_Deck_Analytics
 from mtg_deck_optimizer.analytics.mulligan_simulator import MulliganSimulator
@@ -32,10 +42,10 @@ from mtg_deck_optimizer.analytics.tradeoff_engine import TradeoffEngine
 from mtg_deck_optimizer.analytics.land_balance_engine import LandBalanceEngine, LandBalanceReport
 
 # -----------------------------------------------------------------------------
-# Streamlit UI Setup
+# Streamlit UI Setup & Global Theming
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="MTG Commander Studio & Visual Analytics",
+    page_title="MTG Commander Studio & 5-Bracket Engine",
     page_icon="🧙",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -45,7 +55,7 @@ st.markdown(
     """
     <style>
     .main {
-        background-color: #0e1117;
+        background-color: #0d1117;
         color: #e6edf3;
     }
     .step-header {
@@ -60,6 +70,13 @@ st.markdown(
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+    .bracket-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 14px;
     }
     .tradeoff-card {
         background: #161b22;
@@ -137,13 +154,29 @@ st.markdown(
         font-size: 0.8rem;
         font-weight: bold;
     }
+    .alert-box-red {
+        background: #3b1219;
+        border: 2px solid #f85149;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 14px 0;
+        color: #ff7b72;
+    }
+    .alert-box-green {
+        background: #0d2818;
+        border: 2px solid #2ea043;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 14px 0;
+        color: #56d364;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # -----------------------------------------------------------------------------
-# Services & State
+# Cached Global Services & Helpers
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def get_services():
@@ -152,7 +185,7 @@ def get_services():
 ingestion_service, rules_engine, deckbuilder_gen = get_services()
 
 def get_card_image_url(card_or_name: Any) -> str:
-    """Helper accepting Card, DeckItem, or card name string to return verified high-res image."""
+    """Helper accepting Card, DeckItem, or card name string to return verified high-res Scryfall image."""
     if hasattr(card_or_name, "image_uris") and card_or_name.image_uris and card_or_name.image_uris.normal:
         url = card_or_name.image_uris.normal
         if url and "cards.scryfall.io/back.jpg" not in url and "4c565076-5db2-47ea-8ee0-4a4fd7bb353d" not in url:
@@ -167,6 +200,7 @@ def get_card_image_url(card_or_name: Any) -> str:
         raw_n = str(card_or_name)
     return ingestion_service.scryfall.get_card_image_url(raw_n)
 
+# Session State Initialization
 if "raw_decklist" not in st.session_state:
     st.session_state.raw_decklist = ""
 if "cmdr_override" not in st.session_state:
@@ -179,8 +213,8 @@ if "current_wotc" not in st.session_state:
     st.session_state.current_wotc = None
 if "current_pip" not in st.session_state:
     st.session_state.current_pip = None
-if "current_gc" not in st.session_state:
-    st.session_state.current_gc = None
+if "current_bracket_audit" not in st.session_state:
+    st.session_state.current_bracket_audit = None
 if "generated_deck_result" not in st.session_state:
     st.session_state.generated_deck_result = None
 if "optimized_report" not in st.session_state:
@@ -197,18 +231,18 @@ if "chosen_gen_cmdr" not in st.session_state:
 # -----------------------------------------------------------------------------
 # Top-Level Navigation Mode Selector
 # -----------------------------------------------------------------------------
-st.title("🧙 MTG Commander Studio & Visual Analytics Suite")
+st.title("🧙 MTG Commander Studio & 5-Bracket Engine")
 app_mode = st.radio(
     "Selecciona el Modo de Trabajo:",
-    ["🔄 Optimizar Mazo Existente (Optimizer & Visual Studio)", "🔨 Generar Mazo desde Cero (Deckbuilder Generator)"],
+    ["🔄 Optimizar Mazo Existente (5-Bracket Engine & Visual Studio)", "🔨 Generar Mazo desde Cero (Deckbuilder Generator)"],
     horizontal=True,
 )
 
 # =============================================================================
-# MODO 1: OPTIMIZAR MAZO EXISTENTE
+# MODO 1: OPTIMIZAR MAZO EXISTENTE (5-BRACKET ENGINE)
 # =============================================================================
 if "Optimizar Mazo" in app_mode:
-    st.markdown('<div class="step-header">⚙️ PASO 1: Configuración Inicial del Mazo</div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-header">⚙️ PASO 1: Configuración & Selección Oficial de 5 Brackets WotC</div>', unsafe_allow_html=True)
     
     col_deck_in, col_config = st.columns([3, 2])
 
@@ -216,11 +250,12 @@ if "Optimizar Mazo" in app_mode:
         deck_text_input = st.text_area(
             "Pega tu lista de mazo (Moxfield, Archidekt, MTGO o texto plano):",
             value=st.session_state.raw_decklist,
-            height=260,
+            height=270,
             placeholder="""1 Atraxa, Praetors' Voice
 1 Sol Ring
 1 Arcane Signet
 1 Rhystic Study
+1 Demonic Tutor
 ...""",
         )
         st.session_state.raw_decklist = deck_text_input
@@ -233,17 +268,44 @@ if "Optimizar Mazo" in app_mode:
         st.session_state.cmdr_override = cmdr_input
 
     with col_config:
-        st.markdown("#### Parámetros de Optimización")
+        st.markdown("#### 🏆 Sistema Oficial de 5 Brackets WotC")
         opt_bracket_num = st.selectbox(
-            "Bracket Objetivo:",
-            options=[1, 2, 3, 4],
+            "Bracket Objetivo para el Mazo:",
+            options=[1, 2, 3, 4, 5],
             index=2,
             format_func=lambda x: {
-                1: "Bracket 1: Casual / Jank (0 Game Changers, sin combos)",
-                2: "Bracket 2: Core EDH / Mid Power (0 Game Changers, sin combos rápidos)",
-                3: "Bracket 3: High Power (Máximo 3 Game Changers, interacción rápida)",
-                4: "Bracket 4: Competitive EDH / cEDH (Game Changers ilimitados, fast mana, combos T1-T3)",
+                1: "Bracket 1: Exhibition (Ultra-Casual / Temático)",
+                2: "Bracket 2: Core (Preconstruido Promedio)",
+                3: "Bracket 3: Upgraded (Precon Mejorado / Optimizado Medio)",
+                4: "Bracket 4: Optimized (Alta Potencia)",
+                5: "Bracket 5: cEDH (Competitive Commander / Tournament Meta)",
             }[x],
+        )
+
+        # Real-time Bracket Specification Card
+        bracket_matrix = WOTC_Bracket_Engine.get_bracket_matrix()
+        b_info = bracket_matrix[opt_bracket_num]
+
+        st.markdown(
+            f"""
+            <div class="bracket-card">
+                <div style="font-size:1.05rem; font-weight:bold; color:#58a6ff; margin-bottom:6px;">
+                    🎯 Experiencia de Juego ({b_info['label']})
+                </div>
+                <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.4;">
+                    {b_info['experience']}
+                </div>
+                <div style="font-size:0.88rem; color:#8b949e; margin-bottom:8px;">
+                    <strong>📜 Reglas Oficiales:</strong> {b_info['deckbuilding_rules']}
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:0.82rem;">
+                    <span class="badge-gc">Game Changers: {'Máx ' + str(b_info['max_game_changers']) if b_info['max_game_changers'] < 900 else 'Ilimitados'}</span>
+                    <span class="badge-tier-a">Victoria Típica: {b_info['typical_win_turn']}</span>
+                    <span class="badge-tier-b">Curva Objetivo: {b_info['target_avg_cmc']} CMC</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
         all_archetype_names = list(ARCHETYPE_DEFINITIONS.keys())
@@ -254,10 +316,96 @@ if "Optimizar Mazo" in app_mode:
         if not budget_unlimited:
             opt_max_budget = st.number_input("Presupuesto Máximo de Upgrade (USD):", min_value=5.0, value=150.0, step=10.0)
 
-        untouchables_str = st.text_area("Cartas Intocables (separadas por comas):", placeholder="Sol Ring, Rhystic Study")
+        untouchables_str = st.text_area("Cartas Intocables (separadas por comas):", placeholder="Sol Ring, Doubling Season")
         untouchable_cards = [c.strip() for c in untouchables_str.split(",") if c.strip()]
 
-    # Explicit Action Buttons for Transition to Step 2
+    # -------------------------------------------------------------------------
+    # AUDITORÍA PREVIA EN TIEMPO REAL & ALERTA ROJA ANTES DEL PROCESAMIENTO
+    # -------------------------------------------------------------------------
+    pre_audit_report: Optional[BracketAuditReport] = None
+    if deck_text_input.strip():
+        # Quick parse to evaluate bracket violations before user clicks process
+        pre_cmdr = cmdr_input.strip() if cmdr_input.strip() else None
+        if not pre_cmdr:
+            for line in deck_text_input.strip().splitlines():
+                clean_l = ingestion_service.scryfall.clean_card_name(line)
+                if clean_l and not clean_l.startswith("//") and not clean_l.startswith("#"):
+                    pre_cmdr = clean_l
+                    break
+        
+        pre_deck, _ = ingestion_service.ingest_from_text(
+            raw_text=deck_text_input,
+            deck_name="Deck Preview",
+            commander_override=pre_cmdr,
+        )
+        pre_audit_report = WOTC_Bracket_Engine.audit_deck(pre_deck, opt_bracket_num)
+
+        if not pre_audit_report.is_legal_for_bracket:
+            st.markdown(
+                f"""
+                <div class="alert-box-red">
+                    <div style="font-size:1.15rem; font-weight:bold; margin-bottom:6px;">
+                        🚨 ALERTA DE INFRACCIÓN: El mazo ingresado viola las reglas de Bracket {opt_bracket_num} ({b_info['label']})
+                    </div>
+                    <div style="font-size:0.95rem; margin-bottom:10px;">
+                        {pre_audit_report.actionable_summary}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Violations breakdown table / visual cards
+            st.markdown(f"#### ⚠️ Cartas que deben ser removidas para cumplir con Bracket {opt_bracket_num}:")
+            v_cols = st.columns(min(len(pre_audit_report.cards_to_remove), 3) if pre_audit_report.cards_to_remove else 1)
+            
+            for r_idx, rem in enumerate(pre_audit_report.cards_to_remove):
+                with v_cols[r_idx % len(v_cols)]:
+                    st.markdown(f"<span class='badge-out'>❌ SACAR</span> **{rem.card_name}**", unsafe_allow_html=True)
+                    st.image(get_card_image_url(rem.card_name), use_container_width=True)
+                    st.caption(f"**Motivo:** {rem.reason}")
+                    if rem.suggested_replacements:
+                        st.markdown(f"**Sustitutos sugeridos:** {', '.join(rem.suggested_replacements[:2])}")
+
+            # Auto-Remediation One-Click Button
+            if st.button(f"🔧 Auto-Corregir Lista de Mazo para Bracket {opt_bracket_num}", type="secondary", use_container_width=True):
+                updated_lines = []
+                # Map cuts to replacements
+                replacements_map = {}
+                for rem in pre_audit_report.cards_to_remove:
+                    if rem.suggested_replacements:
+                        replacements_map[rem.card_name.lower()] = rem.suggested_replacements[0]
+
+                for line in deck_text_input.splitlines():
+                    clean_name = ingestion_service.scryfall.clean_card_name(line)
+                    if clean_name.lower() in replacements_map:
+                        new_card = replacements_map[clean_name.lower()]
+                        # replace card name in line while preserving quantity
+                        if line.strip().startswith("1 ") or line.strip().startswith("1x "):
+                            updated_lines.append(f"1 {new_card}")
+                        else:
+                            updated_lines.append(new_card)
+                    else:
+                        updated_lines.append(line)
+
+                new_text = "\n".join(updated_lines)
+                st.session_state.raw_decklist = new_text
+                st.success(f"✨ ¡Lista de mazo auto-corregida con sustitutos legales para Bracket {opt_bracket_num}!")
+                st.rerun()
+
+        elif opt_bracket_num in [1, 2, 3]:
+            st.markdown(
+                f"""
+                <div class="alert-box-green">
+                    <div style="font-weight:bold; font-size:1.05rem;">
+                        ✅ ¡Verificación Exitosa! El mazo cumple 100% con las restricciones de Bracket {opt_bracket_num} ({b_info['label']}).
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # Transition to Step 2
     col_btn_proc, col_btn_clear = st.columns([3, 1])
     with col_btn_proc:
         analyze_btn = st.button("▶️ Procesar y Analizar Mazo (Pasar al Paso 2)", type="primary", use_container_width=True)
@@ -267,7 +415,7 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.current_deck = None
             st.session_state.current_wotc = None
             st.session_state.current_pip = None
-            st.session_state.current_gc = None
+            st.session_state.current_bracket_audit = None
             st.session_state.optimized_report = None
             st.session_state.raw_decklist = ""
             st.rerun()
@@ -293,7 +441,7 @@ if "Optimizar Mazo" in app_mode:
                         break
 
             # Step 2: Ingest & Scryfall CDN Enrichment
-            status_text.markdown("🌐 **Paso 2/4:** Consultando metadatos, precios e imágenes en alta resolución en Scryfall CDN...")
+            status_text.markdown("🌐 **Paso 2/4:** Consultando metadatos, precios e imágenes en Scryfall CDN...")
             progress_bar.progress(50)
             deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
@@ -301,16 +449,16 @@ if "Optimizar Mazo" in app_mode:
                 commander_override=active_cmdr,
             )
 
-            # Step 3: WotC Rules Validation
-            status_text.markdown("⚖️ **Paso 3/4:** Validando reglas oficiales de WotC Commander (Identidad de color, Banlist, Singleton)...")
+            # Step 3: WotC Rules Validation & Mana Pips
+            status_text.markdown("⚖️ **Paso 3/4:** Validando reglas oficiales WotC (Identidad de color, Singleton, Banlist)...")
             progress_bar.progress(75)
             wotc_result = rules_engine.validate_deck(deck)
             pip_report = Advanced_Deck_Analytics.analyze_mana_pip_balance(deck)
 
-            # Step 4: Game Changers & Bracket Evaluation
-            status_text.markdown("🏆 **Paso 4/4:** Evaluando Game Changers, cuotas por Bracket y balance de tierras...")
+            # Step 4: Master 5-Bracket Engine Audit
+            status_text.markdown("🏆 **Paso 4/4:** Ejecutando WOTC_Bracket_Engine (Auditoría de 5 Brackets, Game Changers y Combos)...")
             progress_bar.progress(100)
-            gc_audit_items = GameChangersEvaluator.audit_deck_game_changers(deck, opt_bracket_num)
+            bracket_audit = WOTC_Bracket_Engine.audit_deck(deck, opt_bracket_num)
             time.sleep(0.1)
 
             status_text.empty()
@@ -319,7 +467,7 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.current_deck = deck
             st.session_state.current_wotc = wotc_result
             st.session_state.current_pip = pip_report
-            st.session_state.current_gc = gc_audit_items
+            st.session_state.current_bracket_audit = bracket_audit
             st.session_state.deck_analyzed = True
 
     # -------------------------------------------------------------------------
@@ -332,10 +480,9 @@ if "Optimizar Mazo" in app_mode:
     deck = st.session_state.current_deck
     wotc_result = st.session_state.current_wotc or rules_engine.validate_deck(deck)
     pip_report = st.session_state.current_pip or Advanced_Deck_Analytics.analyze_mana_pip_balance(deck)
-    # Re-evaluate Game Changers for currently chosen bracket dynamically
-    gc_audit_items = GameChangersEvaluator.audit_deck_game_changers(deck, opt_bracket_num)
+    bracket_audit = st.session_state.current_bracket_audit or WOTC_Bracket_Engine.audit_deck(deck, opt_bracket_num)
 
-    st.markdown('<div class="step-header">📊 PASO 2: Previsualización Gráfica & Diagnóstico Integral</div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-header">📊 PASO 2: Previsualización Gráfica & Diagnóstico Integral WotC</div>', unsafe_allow_html=True)
 
     # Deck Header KPIs
     kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
@@ -349,53 +496,42 @@ if "Optimizar Mazo" in app_mode:
     if not wotc_result.is_legal:
         st.error(f"❌ **Infracciones del Reglamento WOTC ({len(wotc_result.violations)} encontradas):**")
         for v in wotc_result.violations:
-            st.markdown(f"- 🚫 **{v.rule_name}** ({v.offending_card}): {v.explanation}")
+            st.markdown(f"- 🔴 **[{v.rule_type.value}]** {v.message}")
     else:
-        st.success(f"✅ **Mazo 100% Legal en Commander/EDH** (Identidad de color {''.join(deck.color_identity)}, Singleton y Banlist cumplidos).")
+        st.success("✅ **Reglamento WOTC:** Identidad de color, singleton y banlist 100% legales.")
 
-    # Visual Gallery Tabs including Dedicated Game Changers Audit Tab
-    tab_gal_cmdr, tab_gal_creatures, tab_gal_spells, tab_gal_lands, tab_pip_math, tab_gc_audit, tab_gc_db = st.tabs([
-        f"👑 Commander ({len(deck.commanders)})",
-        f"🐉 Criaturas ({len([it for it in deck.maindeck if it.card and 'Creature' in it.card.type_line])})",
-        f"🔮 Soportes y Hechizos ({len([it for it in deck.maindeck if it.card and 'Creature' not in it.card.type_line and 'Land' not in it.card.type_line])})",
-        f"🌲 Tierras ({len([it for it in deck.maindeck if it.card and 'Land' in it.card.type_line])})",
-        "⚖️ Balance de Tierras y Pips",
-        f"🏆 Auditoría Game Changers ({len(gc_audit_items)})",
-        "📚 Catálogo Completo Game Changers",
+    # Interactive Step 2 Diagnostic Tabs
+    tab_gallery, tab_mana_land, tab_wotc_audit, tab_gc_db = st.tabs([
+        "🖼️ Galería Visual del Mazo",
+        "⚖️ Balance de Maná y Tierras",
+        "🏆 Auditoría WOTC 5-Bracket Engine",
+        "📚 Catálogo Oficial de Game Changers",
     ])
 
-    def render_card_grid(items, cols_count=5):
-        """Renders cards row by row in strict grid layout to prevent vertical displacement."""
-        if not items:
-            st.info("No hay cartas en esta categoría.")
-            return
-        for i in range(0, len(items), cols_count):
-            row_items = items[i:i + cols_count]
-            cols = st.columns(cols_count)
-            for c_idx, item in enumerate(row_items):
-                col = cols[c_idx]
-                card = item.card
-                img_url = get_card_image_url(card or item)
-                with col:
-                    st.markdown(f"**{item.quantity}x {item.effective_name}**")
+    with tab_gallery:
+        st.markdown("### 🎴 Galería Visual de Cartas en el Mazo")
+        all_deck_items = deck.commanders + deck.maindeck
+        
+        # Grid layout with 5 columns per row
+        for row_start in range(0, len(all_deck_items), 5):
+            row_chunk = all_deck_items[row_start:row_start + 5]
+            cols = st.columns(5)
+            for c_i, item in enumerate(row_chunk):
+                with cols[c_i]:
+                    img_url = get_card_image_url(item)
                     st.image(img_url, use_container_width=True)
-                    price_txt = f"${item.total_price_usd:.2f} USD" if item.total_price_usd else "N/A"
-                    cmc_txt = f"{card.cmc:.0f} CMC" if card else ""
-                    st.caption(f"{cmc_txt} | {price_txt}")
+                    st.markdown(f"**{item.quantity}x {item.effective_name}**")
+                    if item.card:
+                        cmc_label = f"{item.card.cmc:.0f} CMC" if "Land" not in item.card.type_line else "Tierra"
+                        price_label = f"${item.total_price_usd:.2f}" if item.total_price_usd else ""
+                        st.caption(f"{cmc_label} | {price_label}")
 
-    with tab_gal_cmdr:
-        render_card_grid(deck.commanders, cols_count=4)
-    with tab_gal_creatures:
-        render_card_grid([it for it in deck.maindeck if it.card and "Creature" in it.card.type_line])
-    with tab_gal_spells:
-        render_card_grid([it for it in deck.maindeck if not (it.card and ("Creature" in it.card.type_line or "Land" in it.card.type_line))])
-    with tab_gal_lands:
-        render_card_grid([it for it in deck.maindeck if it.card and "Land" in it.card.type_line])
-
-    with tab_pip_math:
-        st.markdown("### 📊 Balance de Símbolos Requeridos (Pips) vs Fuentes Producidas")
+    with tab_mana_land:
+        st.markdown("### 🎨 Densidad de Pips de Color vs Fuentes de Maná")
+        st.caption("Compara el porcentaje de símbolos de color exigidos en los costes de tus hechizos contra las fuentes de maná que producen tus tierras y rocas:")
+        
         pip_rows = []
-        for c_code, b in pip_report.color_breakdowns.items():
+        for col_sym, b in pip_report.color_breakdowns.items():
             pip_rows.append({
                 "Color": b.color_name,
                 "Pips Requeridos (Costes)": f"{b.pips_required_count} ({b.pips_required_percentage}%)",
@@ -446,27 +582,31 @@ if "Optimizar Mazo" in app_mode:
                         st.caption(f"{adj.add_card_type} | {adj.add_card_cmc:.0f} CMC")
                     st.divider()
 
-        if land_report.fixing_upgrade_suggestions:
-            st.markdown("**🛠️ Sugerencias de Fijación de Color (Color Fixing):**")
-            for fix_sug in land_report.fixing_upgrade_suggestions:
-                st.markdown(f"- 💡 {fix_sug}")
+    with tab_wotc_audit:
+        st.markdown(f"### 🏆 Auditoría del WOTC_Bracket_Engine para {bracket_audit.target_bracket_label}")
+        st.caption("Verificación estricta de las 5 matrices de reglas oficiales: cuotas de Game Changers, combos infinitos, destrucción masiva de tierras (MLD) y turnos extra.")
 
-    with tab_gc_audit:
-        st.markdown(f"### 🏆 Auditoría Individual de Game Changers en el Mazo (Bracket {opt_bracket_num})")
-        st.caption("Identificación individual carta por carta, nivel de eficiencia competitiva, estatus de permanencia y sustitutos legales en el bracket.")
+        # KPI row
+        bk1, bk2, bk3, bk4 = st.columns(4)
+        bk1.metric("🎯 Bracket Objetivo", f"Bracket {bracket_audit.target_bracket}")
+        bk2.metric("🔍 Bracket Detectado", f"Bracket {bracket_audit.detected_bracket}")
+        bk3.metric("🃏 Game Changers Presentes", f"{bracket_audit.total_game_changers_count} (Máx: {bracket_audit.max_allowed_game_changers if bracket_audit.max_allowed_game_changers < 900 else '∞'})")
+        legal_label = "🟢 Cumple Reglas" if bracket_audit.is_legal_for_bracket else "🔴 Infracciones"
+        bk4.metric("⚖️ Estado Legal", legal_label)
 
-        if not gc_audit_items:
-            st.success(f"🌿 **No se detectaron Game Changers format-warping en este mazo.** Es 100% compatible con partidas casuales y no altera las restricciones de Bracket {opt_bracket_num}.")
+        if not bracket_audit.is_legal_for_bracket:
+            st.error(f"⚠️ **Infracciones de Bracket {opt_bracket_num} encontradas ({len(bracket_audit.violations)}):**")
+            for viol in bracket_audit.violations:
+                st.markdown(f"- 🔴 **[{viol.category.value}]**: {viol.message}")
         else:
-            allowed_count = sum(1 for it in gc_audit_items if it.is_allowed)
-            forbidden_count = len(gc_audit_items) - allowed_count
+            st.success(bracket_audit.status_headline)
 
-            gc_k1, gc_k2, gc_k3 = st.columns(3)
-            gc_k1.metric("🃏 Total Game Changers Detectados", f"{len(gc_audit_items)}")
-            gc_k2.metric(f"🟢 Permitidos en Bracket {opt_bracket_num}", f"{allowed_count}")
-            gc_k3.metric(f"🔴 Prohibidos / Exceden Cupo en Bracket {opt_bracket_num}", f"{forbidden_count}")
-
-            for gc_item in gc_audit_items:
+        st.divider()
+        st.markdown("#### 🃏 Auditoría Individual de Game Changers:")
+        if not bracket_audit.game_changers_detected:
+            st.info("🌿 No se detectaron Game Changers format-warping en este mazo.")
+        else:
+            for gc_item in bracket_audit.game_changers_detected:
                 tier_badge = "badge-tier-s" if "S-Tier" in gc_item.efficiency_tier else ("badge-tier-a" if "A-Tier" in gc_item.efficiency_tier else "badge-tier-b")
                 status_badge = "badge-in" if gc_item.is_allowed else "badge-out"
 
@@ -486,38 +626,44 @@ if "Optimizar Mazo" in app_mode:
                         """,
                         unsafe_allow_html=True,
                     )
-
-                    c_gc_img, c_gc_info, c_gc_reps = st.columns([1, 2, 2])
-
-                    with c_gc_img:
+                    c_img, c_exp, c_rep = st.columns([1, 2, 2])
+                    with c_img:
                         st.image(get_card_image_url(gc_item.card_name), use_container_width=True)
-                        st.caption(f"Brackets legales: {', '.join(str(b) for b in gc_item.allowed_brackets)}")
-
-                    with c_gc_info:
-                        st.markdown(f"**⚡ Eficiencia y Nivel:** {gc_item.efficiency_tier}")
-                        st.markdown(f"**💡 Explicación de Eficiencia:** {gc_item.efficiency_explanation}")
-                        st.markdown(f"**📖 Función Principal:** {gc_item.description}")
+                    with c_exp:
+                        st.markdown(f"**⚡ Eficiencia:** {gc_item.efficiency_tier}")
+                        st.markdown(f"**💡 Explicación Técnica:** {gc_item.efficiency_explanation}")
                         if not gc_item.is_allowed:
                             st.error(f"⚠️ {gc_item.status_label}")
                         else:
-                            st.success(f"✅ Permitida dentro del cupo reglamentario de Bracket {opt_bracket_num}.")
-
-                    with c_gc_reps:
-                        if not gc_item.is_allowed:
-                            st.markdown(f"**🔄 Sustitutos Legales Recomendados para Bracket {opt_bracket_num}:**")
-                            rep_cols = st.columns(min(len(gc_item.suggested_in_bracket_replacements), 2))
-                            for r_idx, rep_name in enumerate(gc_item.suggested_in_bracket_replacements[:2]):
-                                with rep_cols[r_idx % 2]:
-                                    st.markdown(f"**{rep_name}**")
-                                    st.image(get_card_image_url(rep_name), use_container_width=True)
+                            st.success(f"✅ Permitida legalmente en Bracket {opt_bracket_num}.")
+                    with c_rep:
+                        if not gc_item.is_allowed and gc_item.suggested_replacements:
+                            st.markdown(f"**🔄 Sustitutos Legales para Bracket {opt_bracket_num}:**")
+                            r_cols = st.columns(min(len(gc_item.suggested_replacements), 2))
+                            for r_i, r_name in enumerate(gc_item.suggested_replacements[:2]):
+                                with r_cols[r_i % 2]:
+                                    st.markdown(f"**{r_name}**")
+                                    st.image(get_card_image_url(r_name), use_container_width=True)
                         else:
-                            st.markdown("**🛡️ Estado de Juego:**")
-                            st.info(f"Esta carta aporta la máxima velocidad/interacción dentro del estándar de Bracket {opt_bracket_num}.")
-
+                            st.info("Esta carta se mantiene dentro del estándar de potencia permitido.")
                     st.divider()
 
+        # Extra Turns, MLD, Combos breakdown
+        if bracket_audit.combos_detected:
+            st.markdown(f"#### ♾️ Combos Infinitos Detectados ({len(bracket_audit.combos_detected)}):")
+            for combo in bracket_audit.combos_detected:
+                st.warning(f"⚡ Combo: **{' + '.join(combo)}**")
+
+        if bracket_audit.mld_detected:
+            st.markdown(f"#### 🌋 Destrucción Masiva de Tierras (MLD) Detectada ({len(bracket_audit.mld_detected)}):")
+            st.error(f"Cartas de MLD: {', '.join(bracket_audit.mld_detected)}")
+
+        if bracket_audit.extra_turns_detected:
+            st.markdown(f"#### ⏳ Turnos Extra Detectados ({len(bracket_audit.extra_turns_detected)}):")
+            st.info(f"Cartas de turnos extra: {', '.join(bracket_audit.extra_turns_detected)}")
+
     with tab_gc_db:
-        st.markdown("### 📚 Catálogo Completo de Game Changers & Reglas de Brackets")
+        st.markdown("### 📚 Catálogo Oficial de Game Changers & Reglas de Brackets")
         st.caption("Los Game Changers son cartas determinantes del formato. Las reglas de Brackets limitan su presencia para garantizar partidas equilibradas:")
         gc_table_data = []
         for gc_name, gc in GAME_CHANGERS_DATABASE.items():
@@ -540,8 +686,8 @@ if "Optimizar Mazo" in app_mode:
                 target_bracket=opt_bracket_num,
                 max_budget_usd=opt_max_budget,
                 untouchable_cards=untouchable_cards,
-                allow_infinite_combos=(opt_bracket_num >= 3),
-                allow_fast_mana=(opt_bracket_num >= 3),
+                allow_infinite_combos=(opt_bracket_num >= 4),
+                allow_fast_mana=(opt_bracket_num >= 4),
             )
 
             from mtg_deck_optimizer.brackets.gap_analyzer import DeckGapAnalyzer
@@ -571,7 +717,7 @@ if "Optimizar Mazo" in app_mode:
         s_col1, s_col2, s_col3, s_col4 = st.columns(4)
         s_col1.metric("📊 Diagnóstico Inicial", f"Bracket {report.initial_bracket.value}")
         s_col2.metric("🎯 Bracket Objetivo", f"Bracket {report.target_bracket.value}")
-        s_col3.metric("⭐ Power Score Estimado", f"{report.estimated_new_power_score:.1f} / 4.0")
+        s_col3.metric("⭐ Power Score Estimado", f"{report.estimated_new_power_score:.1f} / 5.0")
         s_col4.metric("💰 Coste Neto Upgrade", f"${report.budget_summary.net_upgrade_cost_usd:,.2f} USD")
 
         # ---------------------------------------------------------------------
@@ -648,35 +794,22 @@ if "Optimizar Mazo" in app_mode:
         with col_sim_btn:
             if st.button("🎲 Ejecutar 1,000 Simulaciones", type="secondary", use_container_width=True):
                 with st.spinner("Ejecutando 1,000 robos virtuales de 7 cartas..."):
-                    st.session_state.mulligan_result = MulliganSimulator.simulate_opening_hands(opt_deck, num_simulations=1000)
+                    mull_report = Advanced_Deck_Analytics.simulate_opening_hands(opt_deck, num_simulations=1000)
+                    st.session_state.mulligan_result = mull_report
 
-        if st.session_state.mulligan_result is None:
-            st.session_state.mulligan_result = MulliganSimulator.simulate_opening_hands(opt_deck, num_simulations=1000)
-
-        m_res = st.session_state.mulligan_result
-        ms_col1, ms_col2, ms_col3, ms_col4, ms_col5 = st.columns(5)
-        ms_col1.metric("🟢 Manos Jugables", f"{m_res.playable_hand_rate_percent}%")
-        ms_col2.metric("🔴 Atasco (Screw)", f"{m_res.mana_screw_rate_percent}%")
-        ms_col3.metric("🔵 Inundación (Flood)", f"{m_res.mana_flood_rate_percent}%")
-        ms_col4.metric("⚔️ Interacción T1-T3", f"{m_res.interaction_turn_1_to_3_percent}%")
-        ms_col5.metric("👑 Turno Comandante", f"Turno {m_res.avg_commander_cast_turn:.1f}")
-
-        st.info(f"💡 **Diagnóstico de Apertura:** {m_res.mulligan_advice}")
-
-        with st.expander("👀 Ver 3 Manos Iniciales de Muestra Generadas por la Simulación"):
-            for i, hand in enumerate(m_res.sample_opening_hands, 1):
-                st.markdown(f"**Mano #{i}:**")
-                hand_cols = st.columns(len(hand))
-                for h_idx, card_name in enumerate(hand):
-                    with hand_cols[h_idx]:
-                        st.image(get_card_image_url(card_name), use_container_width=True)
-                        st.caption(card_name)
+        if st.session_state.mulligan_result:
+            mull = st.session_state.mulligan_result
+            mc1, mc2, mc3 = st.columns(3)
+            mc1.metric("🃏 Manos Jugables (2-5 Tierras)", f"{mull.playable_hands_percentage:.1f}%")
+            mc2.metric("⚡ Manos con Aceleración Turno 1-2", f"{mull.turn_2_ramp_probability:.1f}%")
+            mc3.metric("🛡️ Manos con Interacción Temprana", f"{mull.early_interaction_probability:.1f}%")
 
         # ---------------------------------------------------------------------
-        # Mana Curve Comparison Chart
+        # 3. Mana Curve Comparison (Before vs After)
         # ---------------------------------------------------------------------
         st.divider()
-        st.subheader("📈 Comparativa de Curva de Maná (Antes vs Después)")
+        st.subheader("📈 Comparación de la Curva de Maná (Antes vs Después)")
+        
         before_counts = {i: 0 for i in range(8)}
         for it in deck.maindeck:
             if it.card and "Land" not in it.card.type_line:
@@ -711,20 +844,20 @@ if "Optimizar Mazo" in app_mode:
         )
 
 # =============================================================================
-# MODO 2: MTG DECKBUILDER GENERATOR (CONSTRUCCIÓN DESDE CERO)
+# MODO 2: MTG DECKBUILDER GENERATOR (CONSTRUCCIÓN DESDE CERO - 5 BRACKETS)
 # =============================================================================
 else:
     st.markdown('<div class="step-header">🔨 MTG Deckbuilder Generator: Construcción de Mazo desde Cero</div>', unsafe_allow_html=True)
-    st.markdown("Especifica tus parámetros estratégicos o selecciona entre los Comandantes visuales recomendados para sintetizar un mazo de 100 cartas perfectamente balanceado y conforme al reglamento de WotC.")
+    st.markdown("Especifica tus parámetros estratégicos o selecciona entre los Comandantes visuales recomendados para sintetizar un mazo de 100 cartas perfectamente balanceado y conforme al sistema oficial de 5 Brackets de WotC.")
 
     gen_col1, gen_col2 = st.columns([1, 1])
 
     with gen_col1:
         gen_bracket = st.selectbox(
             "Bracket Objetivo para Construcción:",
-            [1, 2, 3, 4],
+            [1, 2, 3, 4, 5],
             index=2,
-            format_func=lambda x: f"Bracket {x} - { {1:'Casual / Jank (0 Game Changers)', 2:'Core EDH (0 Game Changers)', 3:'High Power (Máx 3 Game Changers)', 4:'cEDH (Ilimitados)'}[x] }",
+            format_func=lambda x: f"Bracket {x} - { {1:'Exhibition (0 Game Changers, Jank)', 2:'Core EDH (0 Game Changers, Precon)', 3:'Upgraded (Máx 3 Game Changers)', 4:'Optimized (Alta Potencia)', 5:'cEDH (Meta Competitivo)'}[x] }",
         )
         gen_strat = st.selectbox("Estrategia / Arquetipo:", list(ARCHETYPE_DEFINITIONS.keys()))
 
@@ -737,11 +870,11 @@ else:
     st.markdown("#### 👑 Selección de Comandante")
     st.caption("Puedes escribir el nombre de un Comandante o hacer clic en una de las recomendaciones visuales optimizadas para la estrategia elegida:")
 
-    suggested_cmdrs = deckbuilder_gen.suggest_commanders(gen_strat)
-    s_cols = st.columns(min(len(suggested_cmdrs), 4))
+    suggested_cmdrs = deckbuilder_gen.suggest_commanders(gen_strat, target_bracket=gen_bracket)
+    s_cols = st.columns(min(len(suggested_cmdrs), 4) if suggested_cmdrs else 1)
 
     for s_idx, cmdr in enumerate(suggested_cmdrs):
-        with s_cols[s_idx % 4]:
+        with s_cols[s_idx % len(s_cols)]:
             img_c_url = get_card_image_url(cmdr.name)
             st.image(img_c_url, use_container_width=True)
             st.markdown(f"**{cmdr.name}**")
@@ -793,7 +926,7 @@ else:
         g_deck = res.deck
         g_wotc = res.validation
 
-        st.success(f"🎉 ¡Mazo '{g_deck.name}' generado exitosamente con {g_deck.total_cards} cartas!")
+        st.success(f"🎉 ¡Mazo '{g_deck.name}' generado exitosamente con {g_deck.total_cards} cartas para Bracket {gen_bracket}!")
 
         gc1, gc2, gc3, gc4 = st.columns(4)
         gc1.metric("🃏 Total Cartas", f"{g_deck.total_cards}")

@@ -1,0 +1,242 @@
+[
+  {
+    "name": "Drannith Magistrate",
+    "color": "White",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Enlightened Tutor",
+    "color": "White",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Serra's Sanctum",
+    "color": "White",
+    "type": "Land",
+    "is_land": true
+  },
+  {
+    "name": "Smothering Tithe",
+    "color": "White",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Trouble in Pairs",
+    "color": "White",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Cyclonic Rift",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Expropriate",
+    "color": "Blue",
+    "type": "Sorcery",
+    "is_land": false
+  },
+  {
+    "name": "Force of Will",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Fierce Guardianship",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Rhystic Study",
+    "color": "Blue",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Thassa's Oracle",
+    "color": "Blue",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Urza, Lord High Artificer",
+    "color": "Blue",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Mystical Tutor",
+    "color": "Blue",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Jin-Gitaxias, Core Augur",
+    "color": "Blue",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Bolas's Citadel",
+    "color": "Black",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Demonic Tutor",
+    "color": "Black",
+    "type": "Sorcery",
+    "is_land": false
+  },
+  {
+    "name": "Imperial Seal",
+    "color": "Black",
+    "type": "Sorcery",
+    "is_land": false
+  },
+  {
+    "name": "Opposition Agent",
+    "color": "Black",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Tergrid, God of Fright",
+    "color": "Black",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Vampiric Tutor",
+    "color": "Black",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Ad Nauseam",
+    "color": "Black",
+    "type": "Instant",
+    "is_land": false
+  },
+  {
+    "name": "Jeska's Will",
+    "color": "Red",
+    "type": "Sorcery",
+    "is_land": false
+  },
+  {
+    "name": "Underworld Breach",
+    "color": "Red",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Survival of the Fittest",
+    "color": "Green",
+    "type": "Enchantment",
+    "is_land": false
+  },
+  {
+    "name": "Vorinclex, Voice of Hunger",
+    "color": "Green",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Gaea's Cradle",
+    "color": "Green",
+    "type": "Land",
+    "is_land": true
+  },
+  {
+    "name": "Kinnan, Bonder Prodigy",
+    "color": "Multicolor",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Yuriko, the Tiger's Shadow",
+    "color": "Multicolor",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Winota, Joiner of Forces",
+    "color": "Multicolor",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Grand Arbiter Augustin IV",
+    "color": "Multicolor",
+    "type": "Creature",
+    "is_land": false
+  },
+  {
+    "name": "Ancient Tomb",
+    "color": "Colorless",
+    "type": "Land",
+    "is_land": true
+  },
+  {
+    "name": "Chrome Mox",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "The One Ring",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "The Tabernacle at Pendrell Vale",
+    "color": "Colorless",
+    "type": "Land",
+    "is_land": true
+  },
+  {
+    "name": "Trinisphere",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Grim Monolith",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Lion's Eye Diamond",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Mox Diamond",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Mana Vault",
+    "color": "Colorless",
+    "type": "Artifact",
+    "is_land": false
+  },
+  {
+    "name": "Glacial Chasm",
+    "color": "Colorless",
+    "type": "Land",
+    "is_land": true
+  }
+]

@@ -36,7 +36,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Thassa's Oracle": GameChangerDefinition(
         name="Thassa's Oracle",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Victoria instantánea incondicional por solo {U}{U} (2 manás). Su habilidad comprueba devoción tras vaciar la biblioteca.",
         description="Condición de victoria de turno 2-3 prácticamente imparable con Demonic Consultation / Tainted Pact.",
@@ -49,7 +49,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Demonic Consultation": GameChangerDefinition(
         name="Demonic Consultation",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="1 maná instantáneo {B} para exiliar toda la baraja en respuesta al trigger de Thassa's Oracle.",
         description="Exilio completo de biblioteca instantáneo de 1 maná para ganar con Thassa's Oracle.",
@@ -62,7 +62,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Tainted Pact": GameChangerDefinition(
         name="Tainted Pact",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Tutor instantáneo por {1}{B} que además vacía la biblioteca para líneas de victoria cEDH.",
         description="Tutor instantáneo y vaciado de biblioteca de 2 manás para líneas de victoria cEDH.",
@@ -75,7 +75,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Underworld Breach": GameChangerDefinition(
         name="Underworld Breach",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por solo {1}{R}, otorga Escape a todo el cementerio. Con Brain Freeze o LED genera tormenta infinita.",
         description="Motor de tormenta y combo con Brain Freeze y Lion's Eye Diamond para ciclar todo el mazo.",
@@ -88,7 +88,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Ad Nauseam": GameChangerDefinition(
         name="Ad Nauseam",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="A velocidad instantánea por {3}{B}{B}, roba 20-30 cartas en mazos con curva baja, garantizando victoria inmediata.",
         description="Robo masivo de 20-30 cartas por 5 manás para victoria inmediata en el mismo turno.",
@@ -101,7 +101,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Food Chain": GameChangerDefinition(
         name="Food Chain",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Genera maná infinito de criaturas con permanentes exiliables como Squee o Misthollow Griffin.",
         description="Maná de criaturas infinito con criaturas exiliables como Squee o Misthollow Griffin.",
@@ -114,7 +114,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Hermit Druid": GameChangerDefinition(
         name="Hermit Druid",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Activa por {G} para vaciar toda la biblioteca al cementerio en bases de maná sin tierras básicas.",
         description="Vacía todo el cementerio en turnos tempranos si el mazo carece de tierras básicas.",
@@ -127,7 +127,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Doomsday": GameChangerDefinition(
         name="Doomsday",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Reduce la biblioteca a 5 cartas exactas por {B}{B}{B} para resolver una pila de victoria en el mismo turno.",
         description="Pila de 5 cartas de victoria inmediata para líneas de combo de alta velocidad.",
@@ -140,7 +140,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Dualcaster Mage": GameChangerDefinition(
         name="Dualcaster Mage",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Combo instantáneo de criaturas infinitas con Twinflame / Saw in Half por solo 5 manás totales.",
         description="Combo instantáneo de copias infinitas con Twinflame o Saw in Half.",
@@ -152,7 +152,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Twinflame": GameChangerDefinition(
         name="Twinflame",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Copia criaturas con prisa y genera combo infinito con Dualcaster Mage por 2 manás.",
         description="Pieza de combo infinito de 2 manás con Dualcaster Mage.",
@@ -164,7 +164,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Isochron Scepter": GameChangerDefinition(
         name="Isochron Scepter",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Maná infinito e interacción ilimitada con Dramatic Reversal e instantáneos de 2 manás.",
         description="Maná y lanzamientos infinitos imprimiendo Dramatic Reversal.",
@@ -176,7 +176,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Dramatic Reversal": GameChangerDefinition(
         name="Dramatic Reversal",
         category="2-Card Combo Wincon",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Endereza todos los no-tierra por {1}{U}. Con Isochron Scepter y 3+ manás de rocas es maná infinito.",
         description="Enderezador masivo y pieza clave de Isochron Scepter.",
@@ -187,10 +187,22 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     ),
 
     # ==================== 2. Fast Mana & Explosive Accelerators ====================
+    "Sol Ring": GameChangerDefinition(
+        name="Sol Ring",
+        category="Fast Mana",
+        allowed_in_brackets=[3, 4, 5],
+        efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
+        efficiency_explanation="Por {1} maná incoloro produce {C}{C} cada turno. Genera una aceleración de +1 maná neto en turno 1 y ventaja de tempo insalvable.",
+        description="Acelerador format-defining ({1} de coste para obtener {C}{C} indefinidamente).",
+        suggested_replacements_by_bracket={
+            2: ["Arcane Signet", "Fellwar Stone", "Thought Vessel", "Mind Stone"],
+            1: ["Commander's Sphere", "Worn Powerstone", "Hedron Archive"],
+        },
+    ),
     "Mana Crypt": GameChangerDefinition(
         name="Mana Crypt",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {0} que produce {C}{C} cada turno indefinidamente. Genera una ventaja de tempo insalvable.",
         description="Aceleración de coste 0 ({T}: {C}{C}) que distorsiona el tempo de la partida.",
@@ -203,7 +215,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Jeweled Lotus": GameChangerDefinition(
         name="Jeweled Lotus",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {0} que produce 3 manás para el comandante. Permite bajar comandantes en turno 1.",
         description="Baja al comandante 3 turnos antes de tiempo de forma gratuita ({T}, Sacrificar: +3 manás).",
@@ -216,7 +228,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Dockside Extortionist": GameChangerDefinition(
         name="Dockside Extortionist",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {1}{R}. Genera entre 4 y 10 tesoros al entrar, facilitando victorias tempranas.",
         description="Generación explosiva de tesoros de 2 manás proporcional a artefactos y encantamientos rivales.",
@@ -229,7 +241,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Chrome Mox": GameChangerDefinition(
         name="Chrome Mox",
         category="Fast Mana",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Aceleración de {0} manás exiliando 1 carta de la mano. Clave para acelerar turnos 1 y 2.",
         description="Acelerador libre de maná ({0} CMC) a cambio de una carta de la mano.",
@@ -241,7 +253,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Mox Diamond": GameChangerDefinition(
         name="Mox Diamond",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Aceleración de coste {0} descartando una tierra. Fija cualquier color en turno 1.",
         description="Aceleración incolora libre descartando una tierra al entrar al campo.",
@@ -254,7 +266,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Lion's Eye Diamond": GameChangerDefinition(
         name="Lion's Eye Diamond",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {0} que da 3 manás descartando la mano. Motor central de combos con Underworld Breach.",
         description="Pieza fundamental de combos de tormenta y Underworld Breach.",
@@ -267,7 +279,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Mana Vault": GameChangerDefinition(
         name="Mana Vault",
         category="Fast Mana",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Pagas 1 maná y obtienes 3 manás incoloros inmediatamente (+2 manás netos en turno 1).",
         description="Inyección de +2 manás en turno 1 ({1} de coste para obtener {C}{C}{C}).",
@@ -279,7 +291,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Grim Monolith": GameChangerDefinition(
         name="Grim Monolith",
         category="Fast Mana",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Coste {2} para dar 3 manás. Genera maná infinito con Power Artifact o Kinnan.",
         description="Maná incoloro explosivo y combo de maná infinito con Power Artifact.",
@@ -292,7 +304,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Jeska's Will": GameChangerDefinition(
         name="Jeska's Will",
         category="Fast Mana",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por 3 manás genera típicamente 5 a 7 manás rojos e impulsa 3 cartas con el comandante en juego.",
         description="Generador masivo de maná rojo y ventaja de cartas simultánea por 3 manás.",
@@ -304,7 +316,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Ancient Tomb": GameChangerDefinition(
         name="Ancient Tomb",
         category="Fast Mana",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Tierra de turno 1 que produce {C}{C} a cambio de 2 vidas. Acelera permanentemente la curva.",
         description="Tierra rápida que produce 2 manás incoloros a coste de 2 vidas.",
@@ -318,7 +330,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "The One Ring": GameChangerDefinition(
         name="The One Ring",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Otorga protección contra todo por 1 turno y roba 1, 2, 3, 4 cartas acumulativamente por turno sin coste de maná.",
         description="Protección incondicional y motor de robo acumulativo masivo e incoloro.",
@@ -330,7 +342,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Rhystic Study": GameChangerDefinition(
         name="Rhystic Study",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Tasa a cada rival con {1} por cada hechizo o roba 1 carta. Genera de 3 a 6 cartas por ronda.",
         description="Motor de robo y tasa asimétrico por 3 manás que genera ventaja de cartas extrema.",
@@ -342,7 +354,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Mystic Remora": GameChangerDefinition(
         name="Mystic Remora",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por solo 1 maná azul {U}, tasa hechizos no-criatura con {4} o roba carta.",
         description="El pez de 1 maná: roba cartas masivamente contra artefactos, maná rápido e interacción enemiga.",
@@ -354,7 +366,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Smothering Tithe": GameChangerDefinition(
         name="Smothering Tithe",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Genera 1 tesoro por cada robo rival a menos que paguen {2}. Produce entre 3 y 6 manás por ronda.",
         description="Generador masivo de maná y tesoros castigando el robo natural y acumulativo de los rivales.",
@@ -366,7 +378,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Esper Sentinel": GameChangerDefinition(
         name="Esper Sentinel",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {W} tasa el primer hechizo no-criatura de cada rival exigiendo pagar su fuerza o robas carta.",
         description="Motor de robo de 1 maná para castigar hechizos no-criatura de oponentes.",
@@ -378,7 +390,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Necropotence": GameChangerDefinition(
         name="Necropotence",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {B}{B}{B} te permite pagar cualquier cantidad de vidas para robar ese número exacto de cartas al paso final.",
         description="Motor supremo de robo negro: convierte directamente puntos de vida en cartas en mano.",
@@ -390,7 +402,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Orcish Bowmasters": GameChangerDefinition(
         name="Orcish Bowmasters",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {1}{B} con destello castiga instantáneamente los robos rivales haciendo daño y creando un ejército creciente.",
         description="Castigo mortal instantáneo de 2 manás contra motores de robo acumulativo.",
@@ -402,7 +414,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Bolas's Citadel": GameChangerDefinition(
         name="Bolas's Citadel",
         category="Value Engine/Tax",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Te permite jugar la carta superior de tu biblioteca pagando vidas en lugar de maná. Combo con Sensei's Divining Top.",
         description="Lanza cartas desde el top de la biblioteca pagando vidas.",
@@ -416,7 +428,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Demonic Tutor": GameChangerDefinition(
         name="Demonic Tutor",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {1}{B} busca cualquier carta de la baraja y la pone directamente en la mano sin revelarla.",
         description="El tutor incondicional más eficiente y versátil de Magic (2 manás a la mano).",
@@ -428,7 +440,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Vampiric Tutor": GameChangerDefinition(
         name="Vampiric Tutor",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {B} a velocidad de instantáneo pone cualquier carta del mazo en el top por 2 vidas.",
         description="Tutor instantáneo incondicional de 1 maná al top de la biblioteca.",
@@ -440,7 +452,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Imperial Seal": GameChangerDefinition(
         name="Imperial Seal",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {B} conjuro busca cualquier carta y la coloca en el top perdiendo 2 vidas.",
         description="Tutor de 1 maná al top de la biblioteca.",
@@ -452,7 +464,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Mystical Tutor": GameChangerDefinition(
         name="Mystical Tutor",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {U} instantáneo busca cualquier instantáneo o conjuro y lo coloca en el top.",
         description="Tutor instantáneo de 1 maná para hechizos de victoria o contrahechizos.",
@@ -464,7 +476,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Worldly Tutor": GameChangerDefinition(
         name="Worldly Tutor",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {G} instantáneo busca cualquier criatura del mazo y la coloca en el top.",
         description="Tutor instantáneo de 1 maná para piezas clave de criatura.",
@@ -476,7 +488,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Enlightened Tutor": GameChangerDefinition(
         name="Enlightened Tutor",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {W} instantáneo busca cualquier artefacto o encantamiento (fast mana, stax, combo) al top.",
         description="Tutor instantáneo de 1 maná para artefactos o encantamientos.",
@@ -488,7 +500,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Gamble": GameChangerDefinition(
         name="Gamble",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Por {R} busca cualquier carta a la mano y descarta una carta al azar.",
         description="Tutor universal rojo de 1 maná a la mano.",
@@ -500,7 +512,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Urza's Saga": GameChangerDefinition(
         name="Urza's Saga",
         category="Tutor",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Tierra encantamiento que crea autómatas gigantes y en capítulo III tutora artefactos de coste 0-1 (Sol Ring, Mana Crypt, Skullclamp) directamente al campo.",
         description="Tierra que genera amenazas y tutora artefactos de coste 0 o 1 directamente a la mesa.",
@@ -514,7 +526,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Force of Will": GameChangerDefinition(
         name="Force of Will",
         category="Free Interaction",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Contrahechizo de coste {0} (exiliando carta azul y 1 vida). Detiene victorias enemigas con tierras giradas.",
         description="Contrahechizo de coste 0 ({0} exiliando carta azul) para proteger combos y frenar amenazas.",
@@ -526,7 +538,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Fierce Guardianship": GameChangerDefinition(
         name="Fierce Guardianship",
         category="Free Interaction",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {0} con el comandante en mesa. Niega cualquier hechizo no-criatura gratis.",
         description="Negación incondicional de coste 0 si controlas a tu comandante.",
@@ -538,7 +550,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Deflecting Swat": GameChangerDefinition(
         name="Deflecting Swat",
         category="Free Interaction",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Coste {0} con comandante en juego. Redirige hechizos y habilidades al objetivo que elijas.",
         description="Redirección gratuita de cualquier hechizo o habilidad que tenga un objetivo.",
@@ -550,7 +562,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Deadly Rollick": GameChangerDefinition(
         name="Deadly Rollick",
         category="Free Interaction",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Exilio incondicional de criatura de coste {0} con el comandante en juego.",
         description="Exilio gratuito instantáneo de criatura si controlas a tu comandante.",
@@ -562,7 +574,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Pact of Negation": GameChangerDefinition(
         name="Pact of Negation",
         category="Free Interaction",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Contrahechizo de coste {0} puro para proteger el turno de victoria.",
         description="Contrahechizo absoluto de coste 0 utilizado para asegurar el turno de victoria.",
@@ -574,7 +586,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Mindbreak Trap": GameChangerDefinition(
         name="Mindbreak Trap",
         category="Free Interaction",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Exilia cualquier número de hechizos en la pila por {0} si un oponente lanzó 3+ hechizos.",
         description="Exilio masivo de hechizos en la pila gratis contra cadenas de tormenta y contrahechizos.",
@@ -587,7 +599,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Cyclonic Rift": GameChangerDefinition(
         name="Cyclonic Rift",
         category="Mass Sweeper",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {6}{U} a velocidad instantánea regresa TODOS los permanentes no-tierra de TODOS los rivales a la mano, limpiando mesas asimétricamente.",
         description="Limpieza asimétrica masiva instantánea de toda la mesa rival.",
@@ -601,7 +613,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Winter Orb": GameChangerDefinition(
         name="Winter Orb",
         category="Mass Stax/Lock",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Por {2} manás restringe el enderezar de tierras a solo 1 por turno para todos los jugadores.",
         description="Bloqueo masivo de maná: los jugadores solo enderezan 1 tierra durante el paso de enderezar.",
@@ -614,7 +626,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Armageddon": GameChangerDefinition(
         name="Armageddon",
         category="Mass Land Destruction",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="B-Tier (Eficiencia Situacional)",
         efficiency_explanation="Destruye todas las tierras por {3}{W}, destruyendo el ritmo de juego.",
         description="Destrucción masiva de todas las tierras de la mesa.",
@@ -627,7 +639,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Stasis": GameChangerDefinition(
         name="Stasis",
         category="Mass Stax/Lock",
-        allowed_in_brackets=[4],
+        allowed_in_brackets=[4, 5],
         efficiency_tier="A-Tier (Alta Eficiencia)",
         efficiency_explanation="Por {1}{U} nadie endereza nada en su turno, creando un bloqueo absoluto del juego.",
         description="Parálisis total de enderezado para todos los jugadores ({1}{U} encantamiento).",
@@ -640,7 +652,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Drannith Magistrate": GameChangerDefinition(
         name="Drannith Magistrate",
         category="Mass Stax/Lock",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {1}{W} bloquea el lanzamiento de comandantes enemigos desde la zona de mando.",
         description="Impide que los oponentes lancen cartas desde cualquier zona que no sea la mano.",
@@ -652,7 +664,7 @@ GAME_CHANGERS_DATABASE: Dict[str, GameChangerDefinition] = {
     "Opposition Agent": GameChangerDefinition(
         name="Opposition Agent",
         category="Mass Stax/Lock",
-        allowed_in_brackets=[3, 4],
+        allowed_in_brackets=[3, 4, 5],
         efficiency_tier="S-Tier (Máxima Eficiencia / Format Warping)",
         efficiency_explanation="Por {2}{B} con destello, te permite controlar al oponente mientras busca en su biblioteca y robar la carta buscada.",
         description="Secuestro instantáneo de tutores y búsquedas de tierras/cartas enemigas.",
@@ -769,7 +781,7 @@ class GameChangersEvaluator:
         violations: List[GameChangerViolation] = []
         found_changers = cls.find_game_changers_in_deck(deck)
 
-        max_quota = {1: 0, 2: 0, 3: 3, 4: 99}.get(target_bracket, 3)
+        max_quota = {1: 0, 2: 0, 3: 3, 4: 99, 5: 99}.get(target_bracket, 3)
         kept_count = 0
 
         for item, gc_def in found_changers:

@@ -166,6 +166,7 @@ class MTGDeckbuilderGenerator:
             2: 0,
             3: 3,
             4: 99,
+            5: 99,
         }.get(params.target_bracket, 3)
 
         current_game_changers: List[str] = []
@@ -263,7 +264,7 @@ class MTGDeckbuilderGenerator:
                 role_breakdown.ramp_and_mana += 1
 
         # Fast mana package (Carefully capped according to bracket quota)
-        if params.target_bracket == 4:
+        if params.target_bracket in [4, 5]:
             for fm in ["Mana Crypt", "Jeweled Lotus", "Mox Diamond", "Lion's Eye Diamond", "Mana Vault", "Chrome Mox", "Lotus Petal", "Mox Amber", "Mox Opal"]:
                 if try_add_card(fm, "Fast Mana"):
                     role_breakdown.ramp_and_mana += 1
@@ -311,6 +312,8 @@ class MTGDeckbuilderGenerator:
             max_tutors = 4
         elif params.target_bracket == 4:
             max_tutors = 8
+        elif params.target_bracket == 5:
+            max_tutors = 12
 
         tutor_count = 0
         if max_tutors > 0:
