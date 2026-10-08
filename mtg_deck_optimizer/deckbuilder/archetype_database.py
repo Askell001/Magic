@@ -43,6 +43,7 @@ CARD_METADATA_REGISTRY: Dict[str, Tuple[float, List[str], str, float]] = {
     "Najeela, the Blade-Blossom": (3.0, ["W", "U", "B", "R", "G"], "Legendary Creature — Human Warrior", 11.00),
     "Rograkh, Son of Rohgahh": (0.0, ["R"], "Legendary Creature — Kobold Warrior", 2.50),
     "Silas Renn, Seeker Adept": (3.0, ["U", "B"], "Legendary Artifact Creature — Human", 4.00),
+    "Thrasios, Triton Hero": (2.0, ["G", "U"], "Legendary Creature — Merfolk Wizard", 18.00),
     "Tymna the Weaver": (3.0, ["W", "B"], "Legendary Creature — Human Cleric", 35.00),
     "Kraum, Ludevic's Opus": (5.0, ["U", "R"], "Legendary Creature — Zombie Horror", 16.00),
 

@@ -10,19 +10,19 @@ from ..models.deck import DeckSection
 # Section Header Matchers
 SECTION_PATTERNS: Dict[DeckSection, re.Pattern] = {
     DeckSection.COMMANDER: re.compile(
-        r"^(?://\s*|#\s*|--\s*)?(?:commander(?:s)?|command\s*zone|commander\s*\(s\)|general|featured|oathbreaker)\b.*$",
+        r"^(?://\s*|#\s*|--\s*|\[)?(?:commander(?:s)?|command\s*zone|commander\s*\(s\)|general|featured|oathbreaker|companion)[\s:\]\(\d\)]*$",
         re.IGNORECASE,
     ),
     DeckSection.SIDEBOARD: re.compile(
-        r"^(?://\s*|#\s*|--\s*)?(?:sideboard|side\s*board|side\s*deck|sb)\b.*$",
+        r"^(?://\s*|#\s*|--\s*|\[)?(?:sideboard|side\s*board|side\s*deck|sb)[\s:\]\(\d\)]*$",
         re.IGNORECASE,
     ),
     DeckSection.MAYBEBOARD: re.compile(
-        r"^(?://\s*|#\s*|--\s*)?(?:maybeboard|maybe\s*board|maybe\s*deck|considering|consider|wishlist|acquired|tokens?)\b.*$",
+        r"^(?://\s*|#\s*|--\s*|\[)?(?:maybeboard|maybe\s*board|maybe\s*deck|considering|consider|wishlist|acquired|tokens?)[\s:\]\(\d\)]*$",
         re.IGNORECASE,
     ),
     DeckSection.MAINDECK: re.compile(
-        r"^(?://\s*|#\s*|--\s*)?(?:deck|maindeck|main\s*deck|mainboard|main\s*board|main|library|creatures?|instants?|sorcer(?:y|ies)|artifacts?|enchantments?|planeswalkers?|battles?|lands?|spells?)\b.*$",
+        r"^(?://\s*|#\s*|--\s*|\[)?(?:deck|maindeck|main\s*deck|mainboard|main\s*board|main|library|creatures?|instants?|sorcer(?:y|ies)|artifacts?|enchantments?|planeswalkers?|battles?|lands?|spells?)[\s:\]\(\d\)]*$",
         re.IGNORECASE,
     ),
 }
@@ -48,9 +48,12 @@ SET_COLLECTOR_REGEX = re.compile(
     re.VERBOSE,
 )
 
-# Foil marker patterns
+# Moxfield & MTG Tag Patterns
+COMMANDER_TAG_REGEX = re.compile(r"(\*CMDR\*|\*COMMANDER\*|\*GENERAL\*|\*OATHBREAKER\*|#\!Commander)", re.IGNORECASE)
+COMPANION_TAG_REGEX = re.compile(r"(\*CMPN\*|\*COMPANION\*|#\!Companion)", re.IGNORECASE)
 FOIL_REGEX = re.compile(r"(\*F(?:oil)?\*|\((?:foil|etched|f)\)|\[(?:foil|etched)\])", re.IGNORECASE)
 ETCHED_REGEX = re.compile(r"(\*E(?:tched)?\*|\(etched\)|\[etched\])", re.IGNORECASE)
+MOXFIELD_TAG_REGEX = re.compile(r"(\*[A-Za-z0-9_\-]+\*)", re.IGNORECASE)
 
 # Inline tag patterns: #tag, # tag, #!Commander, [Tag], {Tag}
 TAG_REGEX = re.compile(r"(?:#\s*\!?([a-zA-Z0-9_\-]+)|\[([a-zA-Z0-9_\-\s]+)\]|\{([a-zA-Z0-9_\-\s]+)\})")

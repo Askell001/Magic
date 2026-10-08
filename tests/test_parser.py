@@ -119,3 +119,39 @@ def test_parse_edge_cases():
 
     dfc = deck.maindeck[3]
     assert dfc.raw_name == "Delver of Secrets // Insectile Aberration"
+
+
+def test_parse_moxfield_inline_cmdr_and_color_identity():
+    """Test standard Moxfield text export with inline *CMDR* tags."""
+    moxfield_text = """
+    1 Atraxa, Praetors' Voice (2X2) 196 *F* *CMDR*
+    1 Sol Ring (C21) 263
+    1 Arcane Signet (C21) 259
+    1 Rhystic Study (WOT) 25
+    """
+    deck = MTGDeckTextParser.parse(moxfield_text, default_format="commander")
+    assert len(deck.commanders) == 1
+    assert deck.commanders[0].raw_name == "Atraxa, Praetors' Voice"
+    assert deck.commanders[0].set_code == "2x2"
+    assert deck.commanders[0].collector_number == "196"
+    assert deck.commanders[0].is_foil is True
+    assert deck.commander_name == "Atraxa, Praetors' Voice"
+    assert deck.color_identity == ["W", "U", "B", "G"]
+    assert len(deck.maindeck) == 3
+
+
+def test_parse_moxfield_partner_commanders():
+    """Test Moxfield partner commanders with *CMDR* on multiple cards."""
+    partner_text = """
+    1 Thrasios, Triton Hero (C16) 46 *CMDR*
+    1 Tymna the Weaver (C16) 48 *CMDR*
+    1 Sol Ring (C21) 263
+    1 Demonic Tutor (STA) 27
+    """
+    deck = MTGDeckTextParser.parse(partner_text, default_format="commander")
+    assert len(deck.commanders) == 2
+    cmdr_names = [c.raw_name for c in deck.commanders]
+    assert "Thrasios, Triton Hero" in cmdr_names
+    assert "Tymna the Weaver" in cmdr_names
+    assert deck.color_identity == ["W", "U", "B", "G"]
+

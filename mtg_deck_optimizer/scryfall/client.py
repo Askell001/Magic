@@ -130,8 +130,17 @@ class ScryfallClient:
     @classmethod
     def clean_card_name(cls, raw_name: str) -> str:
         """Strips quantities (1x, 4), collector numbers, set codes, and brackets from card name."""
-        clean = raw_name.split("(")[0].split("[")[0].split("#")[0].strip()
+        clean = raw_name
+        # Strip all Moxfield asterisk markers (*CMDR*, *F*, *FOIL*, *E*, etc.)
+        clean = re.sub(r"\*[A-Za-z0-9_\-]+\*", "", clean)
+        # Split off set/tag markers like (LEA), [CMM], #Tag
+        clean = clean.split("(")[0].split("[")[0].split("#")[0].strip()
+        # Strip leading counts like "1 ", "1x ", "4x "
         clean = re.sub(r"^\d+\s*x?\s*", "", clean, flags=re.IGNORECASE).strip()
+        # Strip leading/trailing special characters
+        clean = clean.strip(" \t\r\n-*#")
+        # Normalize DFC double slashes
+        clean = re.sub(r"\s*//\s*", " // ", clean)
         return clean
 
     KNOWN_STAPLE_METADATA = {
@@ -151,7 +160,7 @@ class ScryfallClient:
     }
 
     def _create_synthetic_fallback_card(self, raw_name: str) -> Card:
-        """Creates a safe synthetic Card model so no deck item is ever left as None."""
+        """Creates a safe synthetic Card model so no deck item is ever left as None or without accurate colors."""
         clean = self.clean_card_name(raw_name)
         clean_l = clean.lower()
         
@@ -168,6 +177,25 @@ class ScryfallClient:
             )
             self._cache_card(card)
             return card
+
+        # Consult comprehensive Archetype Database Registry (800+ cards & commanders)
+        try:
+            from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
+            for reg_k, reg_v in CARD_METADATA_REGISTRY.items():
+                if reg_k.lower() == clean_l:
+                    cmc_val, colors_val, typ_val, _ = reg_v
+                    card = Card(
+                        id=f"syn_{clean_l.replace(' ', '_')}",
+                        name=reg_k,
+                        cmc=cmc_val,
+                        type_line=typ_val,
+                        colors=list(colors_val),
+                        color_identity=list(colors_val),
+                    )
+                    self._cache_card(card)
+                    return card
+        except Exception:
+            pass
 
         # Basic type heuristics
         is_land = any(k in clean_l for k in ["land", "plains", "island", "swamp", "mountain", "forest", "tomb", "crypt", "mire", "mesa", "delta", "strand", "foothills", "heath", "sanctuary", "shrine", "pool", "fountain", "garden", "graveyard", "tower", "city", "boseiju", "otawara", "eiganjo", "takenuma", "sokenzan"])

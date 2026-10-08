@@ -10,8 +10,11 @@ from .patterns import (
     identify_section_header,
     LINE_CARD_REGEX,
     SET_COLLECTOR_REGEX,
+    COMMANDER_TAG_REGEX,
+    COMPANION_TAG_REGEX,
     FOIL_REGEX,
     ETCHED_REGEX,
+    MOXFIELD_TAG_REGEX,
     TAG_REGEX,
 )
 
@@ -81,13 +84,23 @@ class MTGDeckTextParser:
         if not card_body:
             return None, None
 
+        # Check for Moxfield inline commander & companion markers first
+        inline_override_section: Optional[DeckSection] = None
+        if COMMANDER_TAG_REGEX.search(card_body):
+            inline_override_section = DeckSection.COMMANDER
+        elif COMPANION_TAG_REGEX.search(card_body):
+            inline_override_section = DeckSection.SIDEBOARD
+
         # Extract foil/etched flags
         is_etched = bool(ETCHED_REGEX.search(card_body))
         is_foil = is_etched or bool(FOIL_REGEX.search(card_body))
 
-        # Remove foil markers from card_body
+        # Strip all Moxfield asterisk markers (*CMDR*, *F*, *E*, *foil*, etc.)
+        card_body = COMMANDER_TAG_REGEX.sub("", card_body)
+        card_body = COMPANION_TAG_REGEX.sub("", card_body)
         card_body = ETCHED_REGEX.sub("", card_body)
         card_body = FOIL_REGEX.sub("", card_body)
+        card_body = MOXFIELD_TAG_REGEX.sub("", card_body)
 
         # Check for DeckStats prefix set notation: `[LEA] Sol Ring`
         prefix_set_match = re.match(r"^\[([a-zA-Z0-9]{3,6})\]\s+(.*)$", card_body)
@@ -100,7 +113,6 @@ class MTGDeckTextParser:
 
         # Extract inline tags (e.g., #!Commander, # Ramp, [Draw])
         tags: List[str] = []
-        inline_override_section: Optional[DeckSection] = None
 
         for tag_match in TAG_REGEX.finditer(card_body):
             raw_tag = tag_match.group(1) or tag_match.group(2) or tag_match.group(3)

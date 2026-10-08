@@ -207,6 +207,24 @@ def get_card_image_url(card_or_name: Any) -> str:
         raw_n = str(card_or_name)
     return ingestion_service.scryfall.get_card_image_url(raw_n)
 
+
+def extract_commander_for_preview(raw_text: str, override: Optional[str] = None) -> Optional[str]:
+    """Extracts commander accurately from Moxfield tags/sections or explicit override without line 0 bias."""
+    if override and override.strip():
+        return override.strip()
+    if not raw_text or not raw_text.strip():
+        return None
+    try:
+        temp_deck = MTGDeckTextParser.parse(raw_text=raw_text, default_format="commander")
+        if temp_deck.commanders:
+            return temp_deck.commanders[0].effective_name
+        if temp_deck.maindeck:
+            return temp_deck.maindeck[0].effective_name
+    except Exception:
+        pass
+    return None
+
+
 # Session State Initialization
 if "raw_decklist" not in st.session_state:
     st.session_state.raw_decklist = ""
@@ -251,28 +269,65 @@ app_mode = st.radio(
 if "Optimizar Mazo" in app_mode:
     st.markdown('<div class="step-header">⚙️ PASO 1: Configuración & Selección Oficial de 5 Brackets WotC</div>', unsafe_allow_html=True)
     
+    # Obligatory Moxfield Format Banner
+    st.markdown(
+        """
+        <div style="background: linear-gradient(135deg, #2b1d03 0%, #161b22 100%); border: 2px solid #d29922; border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.5);">
+            <div style="font-size: 1.28rem; font-weight: 900; color: #f0883e; letter-spacing: 0.5px; margin-bottom: 6px;">
+                ⚠️ FORMATO OBLIGATORIO: EXCLUSIVAMENTE FORMATO MOXFIELD
+            </div>
+            <div style="font-size: 0.95rem; color: #e6edf3; line-height: 1.45;">
+                Para garantizar la correcta lectura del <strong>Comandante</strong>, su <strong>Identidad de Color</strong> y la auditoría WOTC, el sistema requiere estrictamente el formato estándar de exportación de <strong>Moxfield</strong> (incluyendo la etiqueta <code>*CMDR*</code> o la sección <code>// Commander</code>).<br>
+                <span style="color: #58a6ff;">💡 <em>En Moxfield: Entra a tu mazo ➔ botón <strong>Export</strong> ➔ selecciona <strong>Text</strong> o <strong>MTG Arena</strong> ➔ Copia y pega la lista aquí.</em></span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     col_deck_in, col_config = st.columns([3, 2])
 
     with col_deck_in:
         deck_text_input = st.text_area(
-            "Pega tu lista de mazo (Moxfield, Archidekt, MTGO o texto plano):",
+            "📋 Lista del Mazo (EXCLUSIVAMENTE FORMATO MOXFIELD) * (Obligatorio):",
             value=st.session_state.raw_decklist,
-            height=270,
-            placeholder="""1 Atraxa, Praetors' Voice
-1 Sol Ring
-1 Arcane Signet
-1 Rhystic Study
-1 Demonic Tutor
+            height=280,
+            placeholder="""// Commander
+1 Atraxa, Praetors' Voice (2X2) 196 *F* *CMDR*
+
+// Deck
+1 Sol Ring (C21) 263
+1 Arcane Signet (C21) 259
+1 Rhystic Study (WOT) 25
+1 Demonic Tutor (STA) 27
+1 Cyclonic Rift (RTR) 35
 ...""",
         )
-        st.session_state.raw_decklist = deck_text_input
+        
+        # Invalidate old deck state if input list changed
+        if deck_text_input != st.session_state.raw_decklist:
+            st.session_state.raw_decklist = deck_text_input
+            st.session_state.deck_analyzed = False
+            st.session_state.current_deck = None
+            st.session_state.current_wotc = None
+            st.session_state.current_pip = None
+            st.session_state.current_bracket_audit = None
+            st.session_state.optimized_report = None
+            st.session_state.optimized_deck = None
 
         cmdr_input = st.text_input(
-            "👑 Comandante (Opcional - Si se deja vacío, el sistema lo detectará automáticamente como la primera carta de la lista):",
+            "👑 Comandante (Opcional - Si se deja vacío, se extraerá de las etiquetas *CMDR* o // Commander de Moxfield):",
             value=st.session_state.cmdr_override,
             placeholder="Ej: Atraxa, Praetors' Voice",
         )
         st.session_state.cmdr_override = cmdr_input
+
+        # Live detected commander feedback pill
+        detected_cmdr_preview = extract_commander_for_preview(deck_text_input, cmdr_input)
+        if detected_cmdr_preview:
+            st.markdown(f"<div style='margin-top:-6px; margin-bottom:10px; font-size:0.86rem; color:#58a6ff;'>👑 <strong>Comandante Detectado:</strong> <code>{detected_cmdr_preview}</code></div>", unsafe_allow_html=True)
+        elif deck_text_input.strip():
+            st.markdown("<div style='margin-top:-6px; margin-bottom:10px; font-size:0.86rem; color:#f0883e;'>⚠️ <em>No se detectó etiqueta *CMDR* o // Commander. Se asignará la primera carta como comandante si no se especifica.</em></div>", unsafe_allow_html=True)
 
     with col_config:
         st.markdown("#### 🏆 Sistema Oficial de 5 Brackets WotC")
@@ -327,20 +382,11 @@ if "Optimizar Mazo" in app_mode:
             service = get_strategy_service()
             bracket_strategies = service.get_all_strategies()
 
-        # Detect active commander for dynamic tribal resolution
-        active_cmdr_preview = cmdr_input.strip() if cmdr_input.strip() else None
-        if not active_cmdr_preview and deck_text_input.strip():
-            for line in deck_text_input.strip().splitlines():
-                clean_l = ingestion_service.scryfall.clean_card_name(line)
-                if clean_l and not clean_l.startswith("//") and not clean_l.startswith("#"):
-                    active_cmdr_preview = clean_l
-                    break
-
-        # Build list of options with dynamic name and subtype resolution
+        # Build list of options with dynamic name and subtype resolution based on detected commander
         strategy_display_map = {}
         strategy_options = []
         for s in bracket_strategies:
-            resolved_s = resolve_dynamic_strategy(s, active_cmdr_preview)
+            resolved_s = resolve_dynamic_strategy(s, detected_cmdr_preview)
             strat_label = f"{resolved_s['name']} ({resolved_s.get('category', 'General')})"
             strategy_display_map[strat_label] = resolved_s
             strategy_options.append(strat_label)
@@ -411,23 +457,14 @@ if "Optimizar Mazo" in app_mode:
 
             st.error("⛔ Debes retirar las cartas prohibidas de tu lista arriba para poder continuar con el análisis y la optimización.")
 
-        # Quick parse to evaluate bracket violations before user clicks process
-        pre_cmdr = cmdr_input.strip() if cmdr_input.strip() else None
-        if not pre_cmdr:
-            for line in deck_text_input.strip().splitlines():
-                clean_l = ingestion_service.scryfall.clean_card_name(line)
-                if clean_l and not clean_l.startswith("//") and not clean_l.startswith("#"):
-                    pre_cmdr = clean_l
-                    break
-        
         if opt_bracket_num is not None:
             pre_deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
                 deck_name="Deck Preview",
-                commander_override=pre_cmdr,
+                commander_override=cmdr_input.strip() if cmdr_input.strip() else None,
                 enrich=False,
             )
-            for it in pre_deck.items:
+            for it in pre_deck.get_all_items():
                 if not it.card:
                     it.card = ingestion_service.scryfall._find_in_cache(it.raw_name, it.set_code, it.collector_number) or ingestion_service.scryfall._create_synthetic_fallback_card(it.raw_name)
             
@@ -507,7 +544,7 @@ if "Optimizar Mazo" in app_mode:
     if not can_process:
         missing_fields = []
         if not has_deck_text:
-            missing_fields.append("📝 Pegar la lista de cartas del mazo")
+            missing_fields.append("📝 Pegar la lista de cartas del mazo en formato Moxfield")
         if not has_bracket_selected:
             missing_fields.append("🏆 Seleccionar un Bracket Objetivo (1 al 5)")
         if not has_strat_selected:
@@ -530,6 +567,7 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.current_bracket_audit = None
             st.session_state.optimized_report = None
             st.session_state.raw_decklist = ""
+            st.session_state.cmdr_override = ""
             st.rerun()
 
     if analyze_btn and can_process:
@@ -540,17 +578,10 @@ if "Optimizar Mazo" in app_mode:
             status_text = st.empty()
 
             # Step 1: Normalize & Detect Commander
-            status_text.markdown("📖 **Paso 1/4:** Leyendo lista de cartas y detectando comandante...")
+            active_cmdr_name = extract_commander_for_preview(deck_text_input, cmdr_input)
+            status_text.markdown(f"📖 **Paso 1/4:** Leyendo lista Moxfield y detectando comandante (**{active_cmdr_name or 'Auto-detectando'}**)...")
             progress_bar.progress(25)
             time.sleep(0.05)
-
-            active_cmdr = cmdr_input.strip() if cmdr_input.strip() else None
-            if not active_cmdr:
-                for line in deck_text_input.strip().splitlines():
-                    clean_l = ingestion_service.scryfall.clean_card_name(line)
-                    if clean_l and not clean_l.startswith("//") and not clean_l.startswith("#"):
-                        active_cmdr = clean_l
-                        break
 
             # Step 2: Ingest & Scryfall CDN Enrichment
             status_text.markdown("🌐 **Paso 2/4:** Consultando metadatos, precios e imágenes en Scryfall CDN...")
@@ -558,7 +589,7 @@ if "Optimizar Mazo" in app_mode:
             deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
                 deck_name="Commander Deck",
-                commander_override=active_cmdr,
+                commander_override=cmdr_input.strip() if cmdr_input.strip() else None,
             )
 
             # Step 3: WotC Rules Validation & Mana Pips
@@ -576,6 +607,7 @@ if "Optimizar Mazo" in app_mode:
             status_text.empty()
             progress_bar.empty()
 
+            # Reset previous results and store fresh deck analysis
             st.session_state.current_deck = deck
             st.session_state.current_wotc = wotc_result
             st.session_state.current_pip = pip_report

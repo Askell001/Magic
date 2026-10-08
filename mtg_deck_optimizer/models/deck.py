@@ -92,9 +92,22 @@ class Deck(BaseModel):
         """Deck color identity based on commanders, or union of all cards if no commander."""
         colors: Set[str] = set()
         source_items = self.commanders if self.commanders else self.maindeck
+        
         for item in source_items:
-            if item.card:
+            if item.card and item.card.color_identity:
                 colors.update(item.card.color_identity)
+            else:
+                # Check Archetype Registry as safe zero-network fallback
+                clean_name = item.effective_name.lower().strip()
+                try:
+                    from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
+                    for reg_k, reg_v in CARD_METADATA_REGISTRY.items():
+                        if reg_k.lower() == clean_name:
+                            colors.update(reg_v[1])
+                            break
+                except Exception:
+                    pass
+
         # Standard WUBRG sort order
         wubrg = ["W", "U", "B", "R", "G"]
         return [c for c in wubrg if c in colors]
