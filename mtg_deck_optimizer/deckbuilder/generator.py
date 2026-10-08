@@ -85,10 +85,28 @@ class MTGDeckbuilderGenerator:
             legalities={"commander": "legal"},
         )
 
-    def _resolve_archetype_key(self, strategy: str) -> str:
+    def _resolve_archetype_key(self, strategy: str, commander_name: str = "") -> str:
+        s_lower = strategy.strip().lower()
+        
+        # If strategy indicates tribal/kindred or generic tribal, detect commander's creature type
+        if "tribal" in s_lower or "kindred" in s_lower or "tribu" in s_lower or strategy in ("Tribal", "Tribal / Kindred", "Kindred"):
+            cmdr_card = self.resolve_card_metadata(commander_name) if commander_name else None
+            t_line = (cmdr_card.type_line if cmdr_card else "").lower()
+            c_name = (commander_name or "").lower()
+
+            if "demon" in t_line or "demon" in c_name or "bela" in c_name or "belakor" in c_name:
+                return "Demons Tribal / Burn & Draw"
+            elif "vampire" in t_line or "vampire" in c_name or "edgar" in c_name or "vito" in c_name:
+                return "Vampires Tribal / Blood Drain"
+            elif "dragon" in t_line or "dragon" in c_name or "ur-dragon" in c_name or "miirym" in c_name:
+                return "Dragon Tribal"
+            elif "elf" in t_line or "elf" in c_name or "lathril" in c_name or "ezuri" in c_name or "marwyn" in c_name:
+                return "Elves Tribal / Mana Dorks"
+            elif "zombie" in t_line or "zombie" in c_name or "wilhelt" in c_name or "scarab" in c_name:
+                return "Zombies Tribal / Reanimate"
+
         if strategy in ARCHETYPE_DEFINITIONS:
             return strategy
-        s_lower = strategy.strip().lower()
         for k in ARCHETYPE_DEFINITIONS:
             if k.lower() == s_lower or s_lower in k.lower() or k.lower() in s_lower:
                 return k
@@ -122,19 +140,21 @@ class MTGDeckbuilderGenerator:
         Builds a complete, 100-card legal Commander deck from scratch.
         Strictly enforces Color Identity, Singleton rules, and Target Bracket constraints.
         """
-        strat_key = self._resolve_archetype_key(params.strategy_archetype)
+        commander_name = params.commander_name or ""
+        strat_key = self._resolve_archetype_key(params.strategy_archetype, commander_name=commander_name)
         archetype_info = ARCHETYPE_DEFINITIONS[strat_key]
         strategy = strat_key
         target_tier = BracketTier(params.target_bracket)
         bench = BRACKET_BENCHMARKS[target_tier]
 
         # 1. Resolve Commander
-        commander_name = params.commander_name
         if not commander_name or not commander_name.strip():
             commander_name = archetype_info["commanders"][0]["name"]
 
         cmdr_card = self.resolve_card_metadata(commander_name)
-        cmdr_ci = self.rules_engine.extract_commander_color_identity([cmdr_card])
+        cmdr_ci = list(cmdr_card.color_identity or cmdr_card.colors or [])
+        if not cmdr_ci:
+            cmdr_ci = self.rules_engine.extract_commander_color_identity([cmdr_card])
         
         # If commander was custom/unregistered and returned empty CI, check archetype or inferred colors
         if not cmdr_ci or cmdr_ci == ["C"]:
@@ -206,15 +226,15 @@ class MTGDeckbuilderGenerator:
                 if any(c not in cmdr_ci_set for c in reg_colors if c in ("W", "U", "B", "R", "G")):
                     return False
 
-            # Check Color Identity via rules engine
-            is_c_legal, _ = self.rules_engine.validate_color_identity(card, cmdr_ci)
-            if not is_c_legal:
-                return False
-
-            # Extra safety: check card.colors and card.color_identity directly
+            # Strict Color Identity check via card.colors and card.color_identity
             if card.colors and any(c not in cmdr_ci_set for c in card.colors if c in ("W", "U", "B", "R", "G")):
                 return False
             if card.color_identity and any(c not in cmdr_ci_set for c in card.color_identity if c in ("W", "U", "B", "R", "G")):
+                return False
+
+            # Check Color Identity via rules engine
+            is_c_legal, _ = self.rules_engine.validate_color_identity(card, cmdr_ci)
+            if not is_c_legal:
                 return False
 
             # Check Banlist
