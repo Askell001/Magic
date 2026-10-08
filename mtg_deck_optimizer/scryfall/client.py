@@ -189,6 +189,7 @@ class ScryfallClient:
                 reg_low = reg_k.lower()
                 if reg_low == clean_l or reg_low == front_l:
                     cmc_val, colors_val, typ_val, _ = reg_v
+                    img_u = self.STATIC_STAPLE_IMAGES.get(reg_low) or self.STATIC_STAPLE_IMAGES.get(front_l)
                     card = Card(
                         id=f"syn_{clean_l.replace(' ', '_')}",
                         name=reg_k if reg_low == clean_l else clean,
@@ -196,6 +197,7 @@ class ScryfallClient:
                         type_line=typ_val,
                         colors=list(colors_val),
                         color_identity=list(colors_val),
+                        image_uris=CardImageUris(normal=img_u) if img_u else None,
                     )
                     self._cache_card(card)
                     return card
@@ -207,15 +209,16 @@ class ScryfallClient:
         type_line = "Land" if is_land else "Spell"
         cmc = 0.0 if is_land else 3.0
 
-        import urllib.parse
-        img_url = f"https://api.scryfall.com/cards/named?fuzzy={urllib.parse.quote(front_l)}&format=image"
+        img_u = self.STATIC_STAPLE_IMAGES.get(clean_l) or self.STATIC_STAPLE_IMAGES.get(front_l)
+        if not img_u:
+            img_u = "https://cards.scryfall.io/normal/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg"
 
         card = Card(
             id=f"syn_{clean_l.replace(' ', '_')}",
             name=clean,
             cmc=cmc,
             type_line=type_line,
-            image_uris=CardImageUris(normal=img_url),
+            image_uris=CardImageUris(normal=img_u),
         )
         self._cache_card(card)
         return card

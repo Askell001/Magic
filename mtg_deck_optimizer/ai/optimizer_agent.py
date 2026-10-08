@@ -188,21 +188,41 @@ class DeckOptimizerAgent:
             )
 
         # ---------------------------------------------------------------------
-        # 2. Identify General Candidate Cuts (Highest CMC non-land spells)
+        # 2. Identify General Candidate Cuts (Highest CMC non-staple spells)
         # ---------------------------------------------------------------------
+        PROTECTED_STAPLES = {
+            "force of will", "force of negation", "fierce guardianship", "pact of negation",
+            "deflecting swat", "deadly rollick", "mental misstep", "flusterstorm", "mindbreak trap",
+            "submerge", "snuff out", "misdirection", "commandeer", "sol ring", "mana crypt",
+            "mana vault", "chrome mox", "mox diamond", "mox opal", "mox amber", "lotus petal",
+            "lion's eye diamond", "grim monolith", "dark ritual", "cabal ritual", "simian spirit guide",
+            "elvish spirit guide", "dockside extortionist", "ragavan, nimble pilferer", "demonic tutor",
+            "vampiric tutor", "imperial seal", "mystical tutor", "worldly tutor", "enlightened tutor",
+            "gamble", "tainted pact", "demonic consultation", "entomb", "reanimate", "rhystic study",
+            "mystic remora", "the one ring", "necropotence", "necrodominance", "sylvan library",
+            "underworld breach", "brain freeze", "thassa's oracle", "ad nauseam", "peer into the abyss",
+            "jeska's will", "cyclonic rift", "chain of vapor", "swan song", "an offer you can't refuse",
+            "mana drain", "counterspell", "silence", "grand abolisher", "esper sentinel",
+            "orcish bowmasters", "opposition agent", "dauthi voidwalker", "drannith magistrate",
+        }
+
         candidate_cuts: List[DeckItem] = []
         for it in deck.maindeck:
-            if intent.is_untouchable(it.effective_name) or it.effective_name.lower() in already_cut_names:
+            n_l = it.effective_name.lower().strip()
+            front_l = n_l.split(" // ")[0].split(" / ")[0].strip()
+            if intent.is_untouchable(it.effective_name) or n_l in already_cut_names:
+                continue
+            if n_l in PROTECTED_STAPLES or front_l in PROTECTED_STAPLES:
                 continue
             card = it.card
             if not card:
                 candidate_cuts.append(it)
                 continue
-            # Non-land cards with CMC >= 4.0 or off-curve spells
-            if "Land" not in card.type_line and card.cmc >= 4.0:
+            # Non-land cards with CMC >= 3.0 or off-curve spells
+            if "Land" not in card.type_line and card.cmc >= 3.0:
                 candidate_cuts.append(it)
 
-        # Sort candidate cuts by CMC descending (cut heaviest cards first to lower curve)
+        # Sort candidate cuts by CMC descending (cut heaviest non-staple cards first to lower curve)
         candidate_cuts.sort(key=lambda it: it.card.cmc if it.card else 0.0, reverse=True)
 
         # ---------------------------------------------------------------------

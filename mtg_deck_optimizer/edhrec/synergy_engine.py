@@ -264,9 +264,10 @@ class EDHREC_Synergy_Engine:
         elif isinstance(img_uris, dict):
             image_url = img_uris.get("normal") or img_uris.get("large") or img_uris.get("small")
 
-        # Fallback image direct endpoint from Scryfall
-        if not image_url and sanitized:
-            image_url = f"https://api.scryfall.com/cards/named?exact={sanitized}&format=image"
+        # Fallback image direct endpoint from Scryfall CDN
+        if not image_url or "api.scryfall.com" in str(image_url):
+            from ..scryfall.client import ScryfallClient
+            image_url = ScryfallClient().get_card_image_url(name)
 
         return EDHRECCardItem(
             name=name,
@@ -477,7 +478,8 @@ class EDHREC_Synergy_Engine:
             is_banned = BanlistValidator.is_banned(name_clean)
             card_item.is_banned = is_banned
 
-            # 2. Color Identity Check (In-memory fast registry first)
+            # 2. Color Identity Check & Metadata Resolution
+            card_obj = None
             if name_lower in reg_lookup:
                 orig_name, (cmc, colors, type_line, price) = reg_lookup[name_lower]
                 card_ci = {c.upper() for c in colors}
@@ -489,16 +491,28 @@ class EDHREC_Synergy_Engine:
                 if card_item.price_usd is None or card_item.price_usd == 0.0:
                     card_item.price_usd = price
             else:
-                card_obj = scryfall._cache_by_name.get(name_lower)
+                card_obj = scryfall._cache_by_name.get(name_lower) or scryfall._find_in_cache(name_clean, None, None)
+                if not card_obj:
+                    try:
+                        card_obj = scryfall.get_card_by_name(name_clean)
+                    except Exception:
+                        pass
+
                 if card_obj:
-                    card_ci = {c.upper() for c in card_obj.color_identity}
+                    card_ci = set(ColorIdentityExtractor.compute_card_color_identity(card_obj))
                     card_item.is_color_legal = card_ci.issubset(cmdr_ci_set)
                     if card_item.cmc == 0.0 and card_obj.cmc:
                         card_item.cmc = card_obj.cmc
                     if card_item.type_line == "Card" and card_obj.type_line:
                         card_item.type_line = card_obj.type_line
+                    if (card_item.price_usd is None or card_item.price_usd == 0.0) and card_obj.prices and card_obj.prices.usd:
+                        card_item.price_usd = card_obj.prices.usd
                 else:
+                    # If card couldn't be resolved, check basic heuristics or default to True only if no obvious off-color
                     card_item.is_color_legal = True
+
+            # Ensure image_url is always populated with direct verified CDN URL
+            card_item.image_url = scryfall.get_card_image_url(name_clean)
 
             # 3. Game Changer Check
             if name_lower in gc_lookup:

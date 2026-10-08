@@ -268,11 +268,31 @@ class LandBalanceEngine:
                 f"Se requiere incorporar **+{deficit_count} tierras** retirando hechizos pesados o prescindibles."
             )
 
-            # 1. Identify Spells to CUT (Heaviest CMC non-untouchable non-land spells)
-            candidate_spell_cuts = [
-                it for it in current_spells
-                if it.effective_name.lower() not in untouchables
-            ]
+            # 1. Identify Spells to CUT (Heaviest CMC non-untouchable non-protected spells)
+            PROTECTED_STAPLES = {
+                "force of will", "force of negation", "fierce guardianship", "pact of negation",
+                "deflecting swat", "deadly rollick", "mental misstep", "flusterstorm", "mindbreak trap",
+                "submerge", "snuff out", "misdirection", "commandeer", "sol ring", "mana crypt",
+                "mana vault", "chrome mox", "mox diamond", "mox opal", "mox amber", "lotus petal",
+                "lion's eye diamond", "grim monolith", "dark ritual", "cabal ritual", "simian spirit guide",
+                "elvish spirit guide", "dockside extortionist", "ragavan, nimble pilferer", "demonic tutor",
+                "vampiric tutor", "imperial seal", "mystical tutor", "worldly tutor", "enlightened tutor",
+                "gamble", "tainted pact", "demonic consultation", "entomb", "reanimate", "rhystic study",
+                "mystic remora", "the one ring", "necropotence", "necrodominance", "sylvan library",
+                "underworld breach", "brain freeze", "thassa's oracle", "ad nauseam", "peer into the abyss",
+                "jeska's will", "cyclonic rift", "chain of vapor", "swan song", "an offer you can't refuse",
+                "mana drain", "counterspell", "silence", "grand abolisher", "esper sentinel",
+                "orcish bowmasters", "opposition agent", "dauthi voidwalker", "drannith magistrate",
+            }
+
+            candidate_spell_cuts = []
+            for it in current_spells:
+                n_low = it.effective_name.lower().strip()
+                front_low = n_low.split(" // ")[0].split(" / ")[0].strip()
+                if n_low in untouchables or n_low in PROTECTED_STAPLES or front_low in PROTECTED_STAPLES:
+                    continue
+                candidate_spell_cuts.append(it)
+
             candidate_spell_cuts.sort(
                 key=lambda it: it.card.cmc if it.card else 4.0,
                 reverse=True
