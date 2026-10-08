@@ -413,7 +413,7 @@ class ScryfallClient:
     def get_card_image_url(self, name: str) -> str:
         """
         Returns a high-resolution, dependable Scryfall image URL for any card name.
-        Uses verified CDN map first, then cache, then single card lookup, and fallback.
+        Uses verified CDN map first, then cache, and then direct Scryfall CDN redirect.
         """
         import urllib.parse
         clean = self.clean_card_name(name)
@@ -424,11 +424,7 @@ class ScryfallClient:
             c = self._cache_by_name[clean_l]
             if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
                 return c.image_uris.normal
-        # Attempt to retrieve card metadata and cache image
-        scry = self.get_card_by_name(clean, fuzzy=True)
-        if scry and scry.image_uris and scry.image_uris.normal:
-            img = scry.image_uris.normal
-            self.STATIC_STAPLE_IMAGES[clean_l] = img
-            return img
+
+        # Direct CDN redirect URL loaded by browser without consuming backend API quota
         return f"https://api.scryfall.com/cards/named?exact={urllib.parse.quote(clean)}&format=image"
 

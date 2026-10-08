@@ -421,10 +421,11 @@ if "Optimizar Mazo" in app_mode:
                     break
         
         if opt_bracket_num is not None:
-            pre_deck, _ = ingestion_service.parser.parse(
+            pre_deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
                 deck_name="Deck Preview",
                 commander_override=pre_cmdr,
+                enrich=False,
             )
             for it in pre_deck.items:
                 if not it.card:
