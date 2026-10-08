@@ -693,7 +693,8 @@ if "Optimizar Mazo" in app_mode:
                 st.image(sel_img, use_container_width=True)
                 if sel_item.card:
                     c_info = sel_item.card
-                    st.caption(f"**Tipo:** {c_info.type_line} | **CMC:** {c_info.cmc:.0f} | **Precio:** ${c_info.price_usd or 0.0:.2f} USD")
+                    p_val = getattr(sel_item, "total_price_usd", None) or getattr(c_info, "price_usd", None) or (c_info.prices.usd if (c_info.prices and c_info.prices.usd) else 0.0)
+                    st.caption(f"**Tipo:** {c_info.type_line} | **CMC:** {c_info.cmc:.0f} | **Precio:** ${p_val:.2f} USD")
 
     with tab_edhrec:
         st.markdown(f"### 🌐 Sugerencias de la Comunidad (EDHREC Sync) para {deck.commander_name or 'tu Comandante'}")

@@ -84,6 +84,14 @@ class Card(BaseModel):
 
     @computed_field
     @property
+    def price_usd(self) -> Optional[float]:
+        """Convenience property to access normal USD price directly."""
+        if self.prices and self.prices.usd is not None:
+            return self.prices.usd
+        return None
+
+    @computed_field
+    @property
     def primary_type(self) -> str:
         """Determines the primary card type (Creature, Instant, Sorcery, Artifact, Enchantment, Land, Planeswalker, Battle, etc.)."""
         tl = self.type_line.split("—")[0].strip() if "—" in self.type_line else self.type_line
