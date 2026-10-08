@@ -421,11 +421,15 @@ if "Optimizar Mazo" in app_mode:
                     break
         
         if opt_bracket_num is not None:
-            pre_deck, _ = ingestion_service.ingest_from_text(
+            pre_deck, _ = ingestion_service.parser.parse(
                 raw_text=deck_text_input,
                 deck_name="Deck Preview",
                 commander_override=pre_cmdr,
             )
+            for it in pre_deck.items:
+                if not it.card:
+                    it.card = ingestion_service.scryfall._find_in_cache(it.raw_name, it.set_code, it.collector_number) or ingestion_service.scryfall._create_synthetic_fallback_card(it.raw_name)
+            
             pre_audit_report = WOTC_Bracket_Engine.audit_deck(pre_deck, opt_bracket_num)
 
             if not pre_audit_report.is_legal_for_bracket and not has_banned_block:

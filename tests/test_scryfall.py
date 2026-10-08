@@ -68,3 +68,33 @@ def test_scryfall_cache_and_enrichment_mocked():
         assert enriched.maindeck[0].card is not None
         assert enriched.maindeck[0].card.name == "Sol Ring"
         assert enriched.maindeck[0].card.primary_type == "Artifact"
+
+
+def test_scryfall_rate_limit_429_graceful_fallback():
+    client = ScryfallClient()
+
+    with patch("httpx.Client.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_resp.text = '{"code": "rate_limited"}'
+        mock_post.return_value = mock_resp
+
+        deck = Deck(
+            name="Rate Limited Deck",
+            commanders=[DeckItem(raw_name="Yuriko, the Tiger's Shadow", section=DeckSection.COMMANDER)],
+            maindeck=[
+                DeckItem(raw_name="Island", section=DeckSection.MAINDECK),
+                DeckItem(raw_name="Mystical Tutor", section=DeckSection.MAINDECK),
+            ],
+        )
+
+        enriched = client.enrich_deck(deck)
+
+        # None of the cards should be None even during 429
+        assert enriched.commanders[0].card is not None
+        assert enriched.commanders[0].card.name == "Yuriko, the Tiger's Shadow"
+        assert enriched.maindeck[0].card is not None
+        assert enriched.maindeck[0].card.name == "Island"
+        assert enriched.maindeck[1].card is not None
+        assert enriched.maindeck[1].card.name == "Mystical Tutor"
+

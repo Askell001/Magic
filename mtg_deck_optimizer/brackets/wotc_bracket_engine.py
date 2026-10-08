@@ -134,21 +134,21 @@ class WOTC_Bracket_Engine:
         found = []
         seen = set()
         for item in deck.items:
-            card_name = item.card.name
+            card_name = item.effective_name
             clean = card_name.lower().strip()
             # Direct match
             for gc_name, gc_def in GAME_CHANGERS_DATABASE.items():
                 if clean == gc_name.lower() or (f" // " in clean and clean.split(" // ")[0] == gc_name.lower()):
                     if gc_name.lower() not in seen:
                         seen.add(gc_name.lower())
-                        found.append((item.card.name, gc_def))
+                        found.append((card_name, gc_def))
                     break
         return found
 
     @classmethod
     def detect_two_card_combos(cls, deck: Deck) -> List[List[str]]:
         """Identifies 2-card infinite combos present in the deck."""
-        deck_cards = {item.card.name.lower().strip() for item in deck.items}
+        deck_cards = {item.effective_name.lower().strip() for item in deck.items}
         detected = []
         for combo in KNOWN_TWO_CARD_COMBOS:
             if combo.issubset(deck_cards):
@@ -156,8 +156,9 @@ class WOTC_Bracket_Engine:
                 matched_names = []
                 for piece in combo:
                     for item in deck.items:
-                        if item.card.name.lower().strip() == piece or item.card.name.lower().strip().startswith(piece):
-                            matched_names.append(item.card.name)
+                        name_low = item.effective_name.lower().strip()
+                        if name_low == piece or name_low.startswith(piece):
+                            matched_names.append(item.effective_name)
                             break
                 detected.append(matched_names if len(matched_names) == len(combo) else list(combo))
         return detected
@@ -165,15 +166,16 @@ class WOTC_Bracket_Engine:
     @classmethod
     def detect_fast_combos(cls, deck: Deck) -> List[List[str]]:
         """Identifies Turn 1-6 fast 2-card combo wincons prohibited in Bracket 3 and below."""
-        deck_cards = {item.card.name.lower().strip() for item in deck.items}
+        deck_cards = {item.effective_name.lower().strip() for item in deck.items}
         detected = []
         for combo in FAST_EARLY_COMBOS:
             if combo.issubset(deck_cards):
                 matched_names = []
                 for piece in combo:
                     for item in deck.items:
-                        if item.card.name.lower().strip() == piece or item.card.name.lower().strip().startswith(piece):
-                            matched_names.append(item.card.name)
+                        name_low = item.effective_name.lower().strip()
+                        if name_low == piece or name_low.startswith(piece):
+                            matched_names.append(item.effective_name)
                             break
                 detected.append(matched_names if len(matched_names) == len(combo) else list(combo))
         return detected
@@ -184,12 +186,12 @@ class WOTC_Bracket_Engine:
         detected = []
         seen = set()
         for item in deck.items:
-            clean = item.card.name.lower().strip()
+            clean = item.effective_name.lower().strip()
             for mld_card in MASS_LAND_DENIAL_CARDS:
                 if clean == mld_card or (f" // " in clean and clean.split(" // ")[0] == mld_card):
-                    if item.card.name not in seen:
-                        seen.add(item.card.name)
-                        detected.append(item.card.name)
+                    if item.effective_name not in seen:
+                        seen.add(item.effective_name)
+                        detected.append(item.effective_name)
                     break
         return detected
 
@@ -199,12 +201,12 @@ class WOTC_Bracket_Engine:
         detected = []
         seen = set()
         for item in deck.items:
-            clean = item.card.name.lower().strip()
+            clean = item.effective_name.lower().strip()
             for et_card in EXTRA_TURNS_CARDS:
                 if clean == et_card or (f" // " in clean and clean.split(" // ")[0] == et_card):
-                    if item.card.name not in seen:
-                        seen.add(item.card.name)
-                        detected.append(item.card.name)
+                    if item.effective_name not in seen:
+                        seen.add(item.effective_name)
+                        detected.append(item.effective_name)
                     break
         return detected
 
@@ -214,12 +216,12 @@ class WOTC_Bracket_Engine:
         detected = []
         seen = set()
         for item in deck.items:
-            clean = item.card.name.lower().strip()
+            clean = item.effective_name.lower().strip()
             for tutor_card in PREMIUM_TUTORS:
                 if clean == tutor_card or (f" // " in clean and clean.split(" // ")[0] == tutor_card):
-                    if item.card.name not in seen:
-                        seen.add(item.card.name)
-                        detected.append(item.card.name)
+                    if item.effective_name not in seen:
+                        seen.add(item.effective_name)
+                        detected.append(item.effective_name)
                     break
         return detected
 
@@ -269,15 +271,15 @@ class WOTC_Bracket_Engine:
                 ))
                 if card_name not in cards_marked_for_removal:
                     cards_marked_for_removal.add(card_name)
-                    # Find card model
-                    card_item = next((i for i in deck.items if i.card.name == card_name), None)
+                    # Find card model safely
+                    card_item = next((i for i in deck.items if i.effective_name.lower() == card_name.lower()), None)
                     removals.append(CardRemovalRecommendation(
                         card_name=card_name,
                         reason=f"Game Changer format-warping ({gc_def.category}). Bracket {target_b_int} prohíbe el uso de Game Changers (límite: 0).",
                         category=gc_def.category,
                         suggested_replacements=gc_def.suggested_replacements_by_bracket.get(target_b_int, ["Arcane Signet", "Mind Stone"]),
-                        card_type=card_item.card.type_line if card_item else "Permanent",
-                        cmc=card_item.card.cmc if card_item else 0.0,
+                        card_type=card_item.card.type_line if card_item and card_item.card else "Permanent",
+                        cmc=card_item.card.cmc if card_item and card_item.card else 0.0,
                     ))
             
             if gc_count > 0:
@@ -318,14 +320,14 @@ class WOTC_Bracket_Engine:
                     ))
                     if card_name not in cards_marked_for_removal:
                         cards_marked_for_removal.add(card_name)
-                        card_item = next((i for i in deck.items if i.card.name == card_name), None)
+                        card_item = next((i for i in deck.items if i.effective_name.lower() == card_name.lower()), None)
                         removals.append(CardRemovalRecommendation(
                             card_name=card_name,
                             reason=f"Excede el límite oficial de 3 Game Changers en Bracket 3 ({idx+1}/3).",
                             category=gc_def.category,
                             suggested_replacements=gc_def.suggested_replacements_by_bracket.get(3, ["Fellwar Stone", "Swords to Plowshares"]),
-                            card_type=card_item.card.type_line if card_item else "Spell",
-                            cmc=card_item.card.cmc if card_item else 0.0,
+                            card_type=card_item.card.type_line if card_item and card_item.card else "Spell",
+                            cmc=card_item.card.cmc if card_item and card_item.card else 0.0,
                         ))
             
             if gc_count > 3:
@@ -371,14 +373,14 @@ class WOTC_Bracket_Engine:
                 for piece in combo_pair:
                     if piece not in cards_marked_for_removal:
                         cards_marked_for_removal.add(piece)
-                        card_item = next((i for i in deck.items if i.card.name == piece), None)
+                        card_item = next((i for i in deck.items if i.effective_name.lower() == piece.lower()), None)
                         removals.append(CardRemovalRecommendation(
                             card_name=piece,
                             reason=f"Pieza de combo infinito de 2 cartas con {', '.join([p for p in combo_pair if p != piece])}, prohibido en Bracket {target_b_int}.",
                             category="2-Card Combo Wincon",
                             suggested_replacements=["Reconnaissance Mission", "Sun Titan", "Beast Within", "Fact or Fiction"],
-                            card_type=card_item.card.type_line if card_item else "Permanent",
-                            cmc=card_item.card.cmc if card_item else 0.0,
+                            card_type=card_item.card.type_line if card_item and card_item.card else "Permanent",
+                            cmc=card_item.card.cmc if card_item and card_item.card else 0.0,
                         ))
 
         elif target_b_int == 3 and fast_combos:
@@ -394,14 +396,14 @@ class WOTC_Bracket_Engine:
                 for piece in combo_pair:
                     if piece not in cards_marked_for_removal:
                         cards_marked_for_removal.add(piece)
-                        card_item = next((i for i in deck.items if i.card.name == piece), None)
+                        card_item = next((i for i in deck.items if i.effective_name.lower() == piece.lower()), None)
                         removals.append(CardRemovalRecommendation(
                             card_name=piece,
                             reason=f"Pieza de combo rápido t1-t6 ({' + '.join(combo_pair)}), restringido a Brackets 4 y 5.",
                             category="Fast Combo Wincon",
                             suggested_replacements=["Aetherflux Reservoir", "Approach of the Second Sun", "Niv-Mizzet, Parun"],
-                            card_type=card_item.card.type_line if card_item else "Permanent",
-                            cmc=card_item.card.cmc if card_item else 0.0,
+                            card_type=card_item.card.type_line if card_item and card_item.card else "Permanent",
+                            cmc=card_item.card.cmc if card_item and card_item.card else 0.0,
                         ))
 
         # ---------------------------------------------------------------------
@@ -421,14 +423,14 @@ class WOTC_Bracket_Engine:
             for mld_c in mld_cards:
                 if mld_c not in cards_marked_for_removal:
                     cards_marked_for_removal.add(mld_c)
-                    card_item = next((i for i in deck.items if i.card.name == mld_c), None)
+                    card_item = next((i for i in deck.items if i.effective_name.lower() == mld_c.lower()), None)
                     removals.append(CardRemovalRecommendation(
                         card_name=mld_c,
                         reason=f"Destrucción/bloqueo masivo de tierras (MLD), prohibido en Bracket {target_b_int}.",
                         category="Mass Land Denial",
                         suggested_replacements=["Blasphemous Act", "Farewell", "Wrath of God", "Toxic Deluge"],
-                        card_type=card_item.card.type_line if card_item else "Sorcery",
-                        cmc=card_item.card.cmc if card_item else 4.0,
+                        card_type=card_item.card.type_line if card_item and card_item.card else "Sorcery",
+                        cmc=card_item.card.cmc if card_item and card_item.card else 4.0,
                     ))
 
         # ---------------------------------------------------------------------
@@ -450,14 +452,14 @@ class WOTC_Bracket_Engine:
             for et_c in extra_turns:
                 if et_c not in cards_marked_for_removal:
                     cards_marked_for_removal.add(et_c)
-                    card_item = next((i for i in deck.items if i.card.name == et_c), None)
+                    card_item = next((i for i in deck.items if i.effective_name.lower() == et_c.lower()), None)
                     removals.append(CardRemovalRecommendation(
                         card_name=et_c,
                         reason="Hechizo de turno extra, prohibido en Bracket 1 Exhibition.",
                         category="Extra Turns",
                         suggested_replacements=["Sphinx's Revelation", "Fact or Fiction", "Deep Analysis"],
-                        card_type=card_item.card.type_line if card_item else "Sorcery",
-                        cmc=card_item.card.cmc if card_item else 5.0,
+                        card_type=card_item.card.type_line if card_item and card_item.card else "Sorcery",
+                        cmc=card_item.card.cmc if card_item and card_item.card else 5.0,
                     ))
         elif target_b_int == 2 and len(extra_turns) > 1:
             excess_et = extra_turns[1:]
@@ -472,14 +474,14 @@ class WOTC_Bracket_Engine:
             for et_c in excess_et:
                 if et_c not in cards_marked_for_removal:
                     cards_marked_for_removal.add(et_c)
-                    card_item = next((i for i in deck.items if i.card.name == et_c), None)
+                    card_item = next((i for i in deck.items if i.effective_name.lower() == et_c.lower()), None)
                     removals.append(CardRemovalRecommendation(
                         card_name=et_c,
                         reason="Exceso de turnos extra en Bracket 2 (máximo 1 permitido).",
                         category="Extra Turns",
                         suggested_replacements=["Pull from Tomorrow", "Tidings", "Concentrate"],
-                        card_type=card_item.card.type_line if card_item else "Sorcery",
-                        cmc=card_item.card.cmc if card_item else 5.0,
+                        card_type=card_item.card.type_line if card_item and card_item.card else "Sorcery",
+                        cmc=card_item.card.cmc if card_item and card_item.card else 5.0,
                     ))
         elif target_b_int == 3 and len(extra_turns) > 2:
             excess_et = extra_turns[2:]
@@ -528,7 +530,7 @@ class WOTC_Bracket_Engine:
             has_fast_combos=len(fast_combos) > 0,
             has_mld=len(mld_cards) > 0,
             avg_cmc=avg_cmc,
-            fast_mana_count=len([c for c in deck.items if c.card.name.lower() in FAST_MANA_CARDS]),
+            fast_mana_count=len([c for c in deck.items if (c.card.name.lower() if c.card else c.effective_name.lower()) in FAST_MANA_CARDS]),
             tutors_count=len(tutors),
         )
         detected_tier_enum = BracketTier(detected_tier_int)

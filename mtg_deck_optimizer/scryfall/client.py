@@ -70,8 +70,11 @@ class ScryfallClient:
         self.request_delay = request_delay
         self.timeout = timeout
         self.last_request_time: float = 0.0
+        self.rate_limited_until: float = 0.0
         self._cache_by_name: Dict[str, Card] = {}
         self._cache_by_set_num: Dict[Tuple[str, str], Card] = {}
+        self.cache_file = Path(".cache/scryfall_cache.json")
+        
         # Load verified CDN card images
         json_file = Path(__file__).parent / "verified_card_images.json"
         if json_file.exists():
@@ -82,8 +85,43 @@ class ScryfallClient:
             except Exception:
                 pass
 
+        # Load persistent disk cache
+        self._load_disk_cache()
+
+    def _load_disk_cache(self):
+        """Loads cached card data from disk if available."""
+        if self.cache_file.exists():
+            try:
+                with open(self.cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for item in data:
+                        card = Card.model_validate(item)
+                        self._cache_by_name[card.name.lower()] = card
+                        if " // " in card.name:
+                            front = card.name.split(" // ")[0].strip().lower()
+                            self._cache_by_name[front] = card
+                        if card.set_code and card.collector_number:
+                            self._cache_by_set_num[(card.set_code.lower(), card.collector_number.lower())] = card
+            except Exception as e:
+                logger.warning(f"Could not load Scryfall disk cache: {e}")
+
+    def _save_disk_cache(self):
+        """Saves cached cards to disk."""
+        try:
+            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cards_data = [c.model_dump() for c in set(self._cache_by_name.values())]
+            with open(self.cache_file, "w", encoding="utf-8") as f:
+                json.dump(cards_data, f, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Could not save Scryfall disk cache: {e}")
+
     def _rate_limit(self):
         """Enforces polite rate limiting compliant with Scryfall API."""
+        if time.time() < self.rate_limited_until:
+            time_left = int(self.rate_limited_until - time.time())
+            logger.info(f"Scryfall client is cooling down from rate limit ({time_left}s remaining). Using local cache.")
+            return
+
         elapsed = time.time() - self.last_request_time
         if elapsed < self.request_delay:
             time.sleep(self.request_delay - elapsed)
@@ -95,6 +133,55 @@ class ScryfallClient:
         clean = raw_name.split("(")[0].split("[")[0].split("#")[0].strip()
         clean = re.sub(r"^\d+\s*x?\s*", "", clean, flags=re.IGNORECASE).strip()
         return clean
+
+    KNOWN_STAPLE_METADATA = {
+        "manamorphose": {"mana_cost": "{1}{R/G}", "cmc": 2.0, "type_line": "Instant", "colors": ["R", "G"], "color_identity": ["R", "G"]},
+        "mana crypt": {"mana_cost": "{0}", "cmc": 0.0, "type_line": "Artifact", "colors": [], "color_identity": []},
+        "sol ring": {"mana_cost": "{1}", "cmc": 1.0, "type_line": "Artifact", "colors": [], "color_identity": []},
+        "arcane signet": {"mana_cost": "{2}", "cmc": 2.0, "type_line": "Artifact", "colors": [], "color_identity": []},
+        "cyclonic rift": {"mana_cost": "{1}{U}", "cmc": 2.0, "type_line": "Instant", "colors": ["U"], "color_identity": ["U"]},
+        "demonic tutor": {"mana_cost": "{1}{B}", "cmc": 2.0, "type_line": "Sorcery", "colors": ["B"], "color_identity": ["B"]},
+        "vampiric tutor": {"mana_cost": "{B}", "cmc": 1.0, "type_line": "Instant", "colors": ["B"], "color_identity": ["B"]},
+        "rhystic study": {"mana_cost": "{2}{U}", "cmc": 3.0, "type_line": "Enchantment", "colors": ["U"], "color_identity": ["U"]},
+        "swords to plowshares": {"mana_cost": "{W}", "cmc": 1.0, "type_line": "Instant", "colors": ["W"], "color_identity": ["W"]},
+        "llanowar elves": {"mana_cost": "{G}", "cmc": 1.0, "type_line": "Creature — Elf Druid", "colors": ["G"], "color_identity": ["G"]},
+        "sylvan library": {"mana_cost": "{1}{G}", "cmc": 2.0, "type_line": "Enchantment", "colors": ["G"], "color_identity": ["G"]},
+        "beast within": {"mana_cost": "{2}{G}", "cmc": 3.0, "type_line": "Instant", "colors": ["G"], "color_identity": ["G"]},
+        "cultivate": {"mana_cost": "{2}{G}", "cmc": 3.0, "type_line": "Sorcery", "colors": ["G"], "color_identity": ["G"]},
+    }
+
+    def _create_synthetic_fallback_card(self, raw_name: str) -> Card:
+        """Creates a safe synthetic Card model so no deck item is ever left as None."""
+        clean = self.clean_card_name(raw_name)
+        clean_l = clean.lower()
+        
+        if clean_l in self.KNOWN_STAPLE_METADATA:
+            meta = self.KNOWN_STAPLE_METADATA[clean_l]
+            card = Card(
+                id=f"syn_{clean_l.replace(' ', '_')}",
+                name=clean,
+                mana_cost=meta.get("mana_cost", "{3}"),
+                cmc=meta.get("cmc", 3.0),
+                type_line=meta.get("type_line", "Spell"),
+                colors=meta.get("colors", []),
+                color_identity=meta.get("color_identity", []),
+            )
+            self._cache_card(card)
+            return card
+
+        # Basic type heuristics
+        is_land = any(k in clean_l for k in ["land", "plains", "island", "swamp", "mountain", "forest", "tomb", "crypt", "mire", "mesa", "delta", "strand", "foothills", "heath", "sanctuary", "shrine", "pool", "fountain", "garden", "graveyard", "tower", "city", "boseiju", "otawara", "eiganjo", "takenuma", "sokenzan"])
+        type_line = "Land" if is_land else "Spell"
+        cmc = 0.0 if is_land else 3.0
+
+        card = Card(
+            id=f"syn_{clean_l.replace(' ', '_')}",
+            name=clean,
+            cmc=cmc,
+            type_line=type_line,
+        )
+        self._cache_card(card)
+        return card
 
     def get_card_by_name(self, name: str, set_code: Optional[str] = None, fuzzy: bool = True) -> Optional[Card]:
         """
@@ -112,6 +199,10 @@ class ScryfallClient:
             if front in self._cache_by_name:
                 return self._cache_by_name[front]
 
+        # If cooling down from 429, serve synthetic fallback immediately
+        if time.time() < self.rate_limited_until:
+            return self._create_synthetic_fallback_card(clean_name)
+
         headers = {"User-Agent": self.USER_AGENT, "Accept": "application/json"}
 
         # Attempt 1: Exact search
@@ -127,6 +218,10 @@ class ScryfallClient:
                     card = Card.from_scryfall_dict(resp.json())
                     self._cache_card(card)
                     return card
+                elif resp.status_code == 429:
+                    self.rate_limited_until = time.time() + 60.0
+                    logger.warning("Scryfall rate limit hit. Switching to offline cache for 60 seconds.")
+                    return self._create_synthetic_fallback_card(clean_name)
 
                 # Attempt 2: Fuzzy search
                 if fuzzy or resp.status_code == 404:
@@ -138,6 +233,9 @@ class ScryfallClient:
                         card = Card.from_scryfall_dict(resp_f.json())
                         self._cache_card(card)
                         return card
+                    elif resp_f.status_code == 429:
+                        self.rate_limited_until = time.time() + 60.0
+                        return self._create_synthetic_fallback_card(clean_name)
 
                 # Attempt 3: Front face search if name contains ' // '
                 if " // " in clean_name:
@@ -149,21 +247,10 @@ class ScryfallClient:
                         self._cache_card(card)
                         return card
 
-                # Attempt 4: General query search /cards/search?q=!"name"
-                self._rate_limit()
-                search_url = f"{self.BASE_URL}/cards/search"
-                resp_s = client.get(search_url, params={"q": f'!"{clean_name}"'}, headers=headers)
-                if resp_s.status_code == 200:
-                    data = resp_s.json().get("data", [])
-                    if data:
-                        card = Card.from_scryfall_dict(data[0])
-                        self._cache_card(card)
-                        return card
-
         except Exception as e:
             logger.warning(f"Error resolving card '{clean_name}' from Scryfall: {e}")
 
-        return None
+        return self._create_synthetic_fallback_card(clean_name)
 
     def fetch_cards_collection(self, identifiers: List[Dict[str, Any]]) -> Tuple[List[Card], List[Dict[str, Any]]]:
         """
@@ -176,6 +263,14 @@ class ScryfallClient:
 
         resolved_cards: List[Card] = []
         not_found_list: List[Dict[str, Any]] = []
+
+        # If currently rate limited, return synthetic cards immediately
+        if time.time() < self.rate_limited_until:
+            for ident in identifiers:
+                c_name = ident.get("name", "Card")
+                syn = self._create_synthetic_fallback_card(c_name)
+                resolved_cards.append(syn)
+            return resolved_cards, []
 
         headers = {
             "User-Agent": self.USER_AGENT,
@@ -200,11 +295,28 @@ class ScryfallClient:
                             resolved_cards.append(card)
                         for nf in body.get("not_found", []):
                             not_found_list.append(nf)
+                    elif resp.status_code == 429:
+                        self.rate_limited_until = time.time() + 60.0
+                        logger.warning("Scryfall batch rate-limited (HTTP 429). Activating local synthetic fallback for 60 seconds.")
+                        for ident in batch:
+                            c_name = ident.get("name", "Card")
+                            syn = self._create_synthetic_fallback_card(c_name)
+                            resolved_cards.append(syn)
+                        break
                     else:
                         logger.error(f"Scryfall batch lookup failed with HTTP {resp.status_code}: {resp.text}")
+                        for ident in batch:
+                            c_name = ident.get("name", "Card")
+                            syn = self._create_synthetic_fallback_card(c_name)
+                            resolved_cards.append(syn)
             except Exception as e:
                 logger.error(f"Scryfall batch request exception: {e}")
+                for ident in batch:
+                    c_name = ident.get("name", "Card")
+                    syn = self._create_synthetic_fallback_card(c_name)
+                    resolved_cards.append(syn)
 
+        self._save_disk_cache()
         return resolved_cards, not_found_list
 
     def enrich_deck(self, deck: Deck) -> Deck:
@@ -243,7 +355,7 @@ class ScryfallClient:
                     seen_queries.add(q_key)
                     identifiers_to_query.append(query_dict)
 
-        # Batch query Scryfall for un-cached cards
+        # Batch query Scryfall for un-cached cards if not rate limited
         if identifiers_to_query:
             resolved_cards, not_found = self.fetch_cards_collection(identifiers_to_query)
 
@@ -254,18 +366,17 @@ class ScryfallClient:
                     clean_nf = self.clean_card_name(nf["name"])
                     fallback_by_name.append({"name": clean_nf})
 
-            if fallback_by_name:
+            if fallback_by_name and time.time() >= self.rate_limited_until:
                 retry_cards, _ = self.fetch_cards_collection(fallback_by_name)
                 for rc in retry_cards:
                     self._cache_card(rc)
 
-        # Match cards back to deck items
+        # Match cards back to deck items, guaranteeing NO item has card=None
         for item in all_items:
             if not item.card:
                 item.card = self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
                 if not item.card:
-                    # Final single-card resolution fallback
-                    item.card = self.get_card_by_name(item.raw_name, fuzzy=True)
+                    item.card = self._create_synthetic_fallback_card(item.raw_name)
 
         return deck
 
