@@ -1014,3 +1014,52 @@ for alias_k, canonical_k in _ALIASES.items():
     if canonical_k in ARCHETYPE_DEFINITIONS and alias_k not in ARCHETYPE_DEFINITIONS:
         ARCHETYPE_DEFINITIONS[alias_k] = ARCHETYPE_DEFINITIONS[canonical_k]
 
+
+def resolve_card_metadata(card_name: str) -> Tuple[float, List[str], str, float]:
+    """
+    Resolves (cmc, colors, type_line, price_usd) for any card name using:
+    1. CARD_METADATA_REGISTRY (exact & case-insensitive)
+    2. Front-face lookup for split/DFC cards
+    3. Scryfall cached data or safe defaults
+    """
+    name_clean = (card_name or "").strip()
+    if not name_clean:
+        return (0.0, [], "Card", 1.0)
+
+    name_lower = name_clean.lower()
+    
+    # 1. Exact match in registry
+    if name_clean in CARD_METADATA_REGISTRY:
+        return CARD_METADATA_REGISTRY[name_clean]
+    
+    for k, v in CARD_METADATA_REGISTRY.items():
+        if k.lower() == name_lower:
+            return v
+            
+    # Front face match
+    if " // " in name_clean or " / " in name_clean:
+        front = name_clean.split(" // ")[0].split(" / ")[0].strip()
+        for k, v in CARD_METADATA_REGISTRY.items():
+            if k.lower() == front.lower():
+                return v
+
+    # 2. Try Scryfall in-memory cache lookup
+    try:
+        from ..scryfall.client import ScryfallClient
+        client = ScryfallClient()
+        card = client.get_card_by_name(name_clean)
+        if card:
+            cmc = float(card.cmc) if card.cmc is not None else 0.0
+            colors = card.colors or []
+            type_l = card.type_line or "Card"
+            price = 2.50
+            if card.prices and card.prices.usd:
+                price = float(card.prices.usd)
+            return (cmc, colors, type_l, price)
+    except Exception:
+        pass
+
+    # 3. Default fallback
+    return (2.0, [], "Card", 2.0)
+
+

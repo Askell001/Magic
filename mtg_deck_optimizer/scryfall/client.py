@@ -559,5 +559,8 @@ class ScryfallClient:
             except Exception:
                 pass
 
-        return "https://cards.scryfall.io/back.jpg"
+        import urllib.parse
+        target_name = front if front else clean
+        encoded = urllib.parse.quote_plus(target_name)
+        return f"https://api.scryfall.com/cards/named?exact={encoded}&format=image&version=normal"
 

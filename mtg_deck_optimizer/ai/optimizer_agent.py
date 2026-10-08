@@ -299,11 +299,21 @@ class DeckOptimizerAgent:
                 remaining_gc_allowed -= 1
 
             total_add_val += inc.estimated_price_usd
+            inc_cmc = inc.cmc
+            if inc_cmc == 0.0:
+                try:
+                    from ..deckbuilder.archetype_database import resolve_card_metadata
+                    m_cmc, _, _, _ = resolve_card_metadata(inc.name)
+                    if m_cmc > 0:
+                        inc_cmc = m_cmc
+                except Exception:
+                    pass
+
             inclusions.append(
                 CardInclusion(
                     card_name=inc.name,
                     type_line=inc.type_line,
-                    cmc=inc.cmc,
+                    cmc=inc_cmc,
                     role=inc.primary_role,
                     synergy_explanation=f"Aumenta la consistencia y velocidad del arquetipo '{community_data.archetype_theme}' con {inc.inclusion_percent:.0f}% de inclusión comunitaria.",
                     estimated_price_usd=round(inc.estimated_price_usd, 2),

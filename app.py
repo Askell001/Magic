@@ -207,7 +207,14 @@ def get_card_image_url(card_or_name: Any) -> str:
         raw_n = card_or_name.raw_name
     else:
         raw_n = str(card_or_name)
-    return ingestion_service.scryfall.get_card_image_url(raw_n)
+    
+    url = ingestion_service.scryfall.get_card_image_url(raw_n)
+    if not url or "cards.scryfall.io/back.jpg" in url:
+        import urllib.parse
+        clean_n = raw_n.split(" // ")[0].split(" / ")[0].strip()
+        enc = urllib.parse.quote_plus(clean_n)
+        return f"https://api.scryfall.com/cards/named?exact={enc}&format=image&version=normal"
+    return url
 
 
 def extract_commander_for_preview(raw_text: str, override: Optional[str] = None) -> Optional[str]:

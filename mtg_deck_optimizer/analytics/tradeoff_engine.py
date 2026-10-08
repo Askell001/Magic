@@ -187,7 +187,42 @@ class TradeoffEngine:
             cut = cuts[idx]
             inc = inclusions[idx]
 
-            delta = round(inc.cmc - cut.cmc, 1)
+            # Resolve accurate CMC for both cut and inclusion
+            cut_cmc = cut.cmc
+            if cut_cmc == 0.0 and cut.card_name.lower() not in (
+                "mox diamond", "chrome mox", "mana crypt", "mox opal", "mox amber",
+                "lotus petal", "lion's eye diamond", "rograkh, son of rohgahh",
+                "pact of negation", "slaughter pact", "summoner's pact", "force of will",
+                "force of negation", "fierce guardianship", "deflecting swat", "deadly rollick",
+                "snuff out", "submerge", "mental misstep", "commandeer", "misdirection",
+                "plains", "island", "swamp", "mountain", "forest"
+            ):
+                try:
+                    from ..deckbuilder.archetype_database import resolve_card_metadata
+                    m_cmc, _, _, _ = resolve_card_metadata(cut.card_name)
+                    if m_cmc > 0:
+                        cut_cmc = m_cmc
+                except Exception:
+                    pass
+
+            in_cmc = inc.cmc
+            if in_cmc == 0.0 and inc.card_name.lower() not in (
+                "mox diamond", "chrome mox", "mana crypt", "mox opal", "mox amber",
+                "lotus petal", "lion's eye diamond", "rograkh, son of rohgahh",
+                "pact of negation", "slaughter pact", "summoner's pact", "force of will",
+                "force of negation", "fierce guardianship", "deflecting swat", "deadly rollick",
+                "snuff out", "submerge", "mental misstep", "commandeer", "misdirection",
+                "plains", "island", "swamp", "mountain", "forest"
+            ):
+                try:
+                    from ..deckbuilder.archetype_database import resolve_card_metadata
+                    m_cmc, _, _, _ = resolve_card_metadata(inc.card_name)
+                    if m_cmc > 0:
+                        in_cmc = m_cmc
+                except Exception:
+                    pass
+
+            delta = round(in_cmc - cut_cmc, 1)
 
             # Check if this cut was a Game Changer violation
             is_game_changer_cut = cut.card_name in GAME_CHANGERS_DATABASE
@@ -195,7 +230,7 @@ class TradeoffEngine:
                 gc_info = GAME_CHANGERS_DATABASE[cut.card_name]
                 tech_reason = (
                     f"⚔️ **Ajuste de Bracket {target_bracket.value}**: Se retira el Game Changer '{cut.card_name}' "
-                    f"[{gc_info.category}] no permitido en este nivel para incorporar '{inc.card_name}' [{inc.cmc:.0f} CMC]. "
+                    f"[{gc_info.category}] no permitido en este nivel para incorporar '{inc.card_name}' [{in_cmc:.0f} CMC]. "
                     f"Alinea el mazo con las reglas oficiales de WotC para {target_bracket.label}. {inc.synergy_explanation}"
                 )
             else:
@@ -203,12 +238,12 @@ class TradeoffEngine:
                 if delta < 0:
                     curve_text = f"reduce la curva en {abs(delta):.1f} CMC, acelerando el desarrollo de turnos tempranos"
                 elif delta == 0:
-                    curve_text = f"mantiene la curva idéntica ({inc.cmc:.0f} CMC) pero eleva el ratio de efectividad/impacto"
+                    curve_text = f"mantiene la curva idéntica ({in_cmc:.0f} CMC) pero eleva el ratio de efectividad/impacto"
                 else:
                     curve_text = f"aumenta la curva (+{delta:.1f} CMC) justificado por su impacto como pieza decisiva"
 
                 tech_reason = (
-                    f"Se retira '{cut.card_name}' [{cut.cmc:.0f} CMC] para incorporar '{inc.card_name}' [{inc.cmc:.0f} CMC]: "
+                    f"Se retira '{cut.card_name}' [{cut_cmc:.0f} CMC] para incorporar '{inc.card_name}' [{in_cmc:.0f} CMC]: "
                     f"{curve_text} y optimiza el rol de '{inc.role}' para el nivel {target_bracket.label}. {inc.synergy_explanation}"
                 )
 
@@ -258,11 +293,11 @@ class TradeoffEngine:
 
             tradeoff_item = CardTradeoff(
                 card_cut_name=cut.card_name,
-                cut_cmc=cut.cmc,
+                cut_cmc=cut_cmc,
                 cut_role=cut.role,
                 cut_price_usd=cut.estimated_price_usd,
                 card_in_name=inc.card_name,
-                in_cmc=inc.cmc,
+                in_cmc=in_cmc,
                 in_role=inc.role,
                 in_price_usd=inc.estimated_price_usd,
                 cmc_delta=delta,
