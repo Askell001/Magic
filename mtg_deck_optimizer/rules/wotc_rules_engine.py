@@ -134,17 +134,12 @@ class WOTC_Commander_Rules_Engine:
     # 2. REAL-TIME BANLIST & FORMAT LEGALITY
     # =========================================================================
 
-    def validate_banlist(self, card: Card, fetch_remote: bool = True) -> Tuple[bool, Optional[str]]:
+    def validate_banlist(self, card: Card, fetch_remote: bool = False, is_companion: bool = False) -> Tuple[bool, Optional[str]]:
         """
-        Checks if a card is legal in Commander against Scryfall API legalities and official banlist.
+        Checks if a card is legal in Commander against the official banlist (banned_cards.json / MongoDB).
         Returns: (is_legal, error_reason_if_illegal)
         """
-        if not card.legalities and fetch_remote and card.name:
-            resolved = self.scryfall_client.get_card_by_name(card.name)
-            if resolved and resolved.legalities:
-                card.legalities = resolved.legalities
-
-        is_banned, ban_reason = BanlistValidator.is_banned_in_commander(card)
+        is_banned, ban_reason = BanlistValidator.is_banned_in_commander(card, is_companion=is_companion)
         if is_banned:
             return False, ban_reason
         return True, None

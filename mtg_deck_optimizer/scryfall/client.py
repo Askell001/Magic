@@ -485,30 +485,43 @@ class ScryfallClient:
     def get_card_image_url(self, name: str) -> str:
         """
         Returns a high-resolution, dependable Scryfall image URL for any card name.
-        Uses verified CDN map first, then cache, and then direct Scryfall CDN redirect with fuzzy fallback.
+        Uses verified CDN map first, then cache, and resolves from Scryfall if needed.
         """
-        import urllib.parse
         clean = self.clean_card_name(name)
         clean_l = clean.lower()
         if clean_l in self.STATIC_STAPLE_IMAGES:
             return self.STATIC_STAPLE_IMAGES[clean_l]
         if clean_l in self._cache_by_name:
             c = self._cache_by_name[clean_l]
-            if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
+            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal:
                 return c.image_uris.normal
 
         # Check front face in cache
         front = clean.split(" // ")[0].split(" / ")[0].strip()
         front_l = front.lower()
+        if front_l in self.STATIC_STAPLE_IMAGES:
+            return self.STATIC_STAPLE_IMAGES[front_l]
         if front_l in self._cache_by_name:
             c = self._cache_by_name[front_l]
-            if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
+            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal:
                 return c.image_uris.normal
 
         cached = self._find_in_cache(clean, None, None)
-        if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io/back.jpg" not in cached.image_uris.normal:
+        if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io" in cached.image_uris.normal:
             return cached.image_uris.normal
 
-        # Direct CDN redirect URL using fuzzy front face for 100% reliable image loading in browser
-        return f"https://api.scryfall.com/cards/named?fuzzy={urllib.parse.quote(front)}&format=image"
+        # Query Scryfall to resolve real CDN URL if not cooling down
+        if time.time() >= self.rate_limited_until:
+            try:
+                card = self.get_card_by_name(clean)
+                if card and card.image_uris and card.image_uris.normal and "cards.scryfall.io" in card.image_uris.normal:
+                    return card.image_uris.normal
+                if " // " in clean:
+                    card_f = self.get_card_by_name(front)
+                    if card_f and card_f.image_uris and card_f.image_uris.normal and "cards.scryfall.io" in card_f.image_uris.normal:
+                        return card_f.image_uris.normal
+            except Exception:
+                pass
+
+        return "https://cards.scryfall.io/normal/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg"
 

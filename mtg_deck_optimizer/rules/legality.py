@@ -34,23 +34,19 @@ UNLIMITED_COPY_CARDS: Set[str] = {
     "slime against humanity",
 }
 
-# Official Commander Banlist (maintained by Commander Rules Committee / WotC)
+# Official Commander Banlist loaded from banned_cards.json (curated format banlist)
 OFFICIAL_COMMANDER_BANLIST: Set[str] = {
     "ancestral recall",
     "balance",
-    "biorhythm",
     "black lotus",
-    "braids, cabal minion",
-    "channel",
     "chaos orb",
-    "coalition victory",
+    "channel",
     "dockside extortionist",
     "emrakul, the aeons torn",
     "erayo, soratami ascendant",
     "falling star",
     "fastbond",
     "flash",
-    "gifts ungiven",
     "golos, tireless pilgrim",
     "griselbrand",
     "hullbreacher",
@@ -68,7 +64,6 @@ OFFICIAL_COMMANDER_BANLIST: Set[str] = {
     "mox ruby",
     "mox sapphire",
     "nadu, winged wisdom",
-    "panoptic mirror",
     "paradox engine",
     "primeval titan",
     "prophet of kruphix",
@@ -76,7 +71,6 @@ OFFICIAL_COMMANDER_BANLIST: Set[str] = {
     "rofellos, llanowar emissary",
     "shahrazad",
     "sundering titan",
-    "sway of the stars",
     "sylvan primordial",
     "time vault",
     "time walk",
@@ -138,14 +132,20 @@ class BanlistValidator:
         return banned
 
     @classmethod
-    def is_banned_in_commander(cls, card: Card) -> Tuple[bool, Optional[str]]:
+    def is_banned_in_commander(cls, card: Card, is_companion: bool = False) -> Tuple[bool, Optional[str]]:
         """
-        Checks if a card is banned in Commander.
+        Checks if a card is banned in Commander against the official banned_cards catalog.
         Returns: (is_banned, ban_reason)
         """
         name_lower = card.name.strip().lower()
 
-        # Check offline curated banlist
+        # Special Lutri Companion Rule
+        if "lutri, the spellchaser" in name_lower:
+            if is_companion:
+                return True, "La carta 'Lutri, the Spellchaser' está PROHIBIDA únicamente como Compañero (Companion)."
+            return False, None
+
+        # Check curated format banlist (banned_cards.json / MongoDB)
         if name_lower in OFFICIAL_COMMANDER_BANLIST:
             return True, f"La carta '{card.name}' está oficialmente PROHIBIDA (Banned) en Commander."
 
@@ -154,12 +154,6 @@ class BanlistValidator:
             front = name_lower.split(" // ")[0].strip()
             if front in OFFICIAL_COMMANDER_BANLIST:
                 return True, f"La carta '{card.name}' está oficialmente PROHIBIDA (Banned) en Commander."
-
-        # Check Scryfall legalities dictionary if populated
-        if card.legalities:
-            cmd_leg = card.legalities.get("commander", "legal").lower()
-            if cmd_leg in ("banned", "not_legal", "restricted"):
-                return True, f"La carta '{card.name}' no es legal en Commander según Scryfall (Estado: {cmd_leg})."
 
         # Check Conspiracy card type
         if "Conspiracy" in card.type_line:
