@@ -36,10 +36,8 @@ def validate_recommendations(
     client = scryfall_client or ScryfallClient()
 
     commander_cards = [it.card for it in deck.commanders if it.card]
-    if commander_cards:
-        cmdr_ci = ColorIdentityExtractor.compute_commander_color_identity(commander_cards)
-    else:
-        cmdr_ci = deck.color_identity
+    extracted = ColorIdentityExtractor.compute_commander_color_identity(commander_cards) if commander_cards else []
+    cmdr_ci = extracted if extracted else (deck.color_identity or [])
 
     existing_names: Set[str] = {it.effective_name.strip().lower() for it in deck.commanders + deck.maindeck}
     untouchables_set = set(c.strip().lower() for c in (untouchable_cards or []))

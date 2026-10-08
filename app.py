@@ -193,8 +193,9 @@ ingestion_service, rules_engine, deckbuilder_gen = get_services()
 
 def get_card_image_url(card_or_name: Any) -> str:
     """Helper accepting Card, DeckItem, or card name string to return verified high-res Scryfall image."""
-    if hasattr(card_or_name, "image_uris") and card_or_name.image_uris and card_or_name.image_uris.normal:
-        url = card_or_name.image_uris.normal
+    card = getattr(card_or_name, "card", card_or_name)
+    if hasattr(card, "image_uris") and card.image_uris and card.image_uris.normal:
+        url = card.image_uris.normal
         if url and "cards.scryfall.io/back.jpg" not in url and "4c565076-5db2-47ea-8ee0-4a4fd7bb353d" not in url:
             return url
     if hasattr(card_or_name, "effective_name"):

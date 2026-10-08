@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional, Tuple, Set
 from pathlib import Path
 import httpx
 
-from ..models.card import Card
+from ..models.card import Card, CardImageUris
 from ..models.deck import Deck, DeckItem
 
 logger = logging.getLogger(__name__)
@@ -163,9 +163,12 @@ class ScryfallClient:
         """Creates a safe synthetic Card model so no deck item is ever left as None or without accurate colors."""
         clean = self.clean_card_name(raw_name)
         clean_l = clean.lower()
-        
-        if clean_l in self.KNOWN_STAPLE_METADATA:
-            meta = self.KNOWN_STAPLE_METADATA[clean_l]
+        # Check front name if DFC
+        front_l = clean_l.split(" // ")[0].split(" / ")[0].strip()
+
+        if clean_l in self.KNOWN_STAPLE_METADATA or front_l in self.KNOWN_STAPLE_METADATA:
+            meta = self.KNOWN_STAPLE_METADATA.get(clean_l) or self.KNOWN_STAPLE_METADATA[front_l]
+            img_u = self.STATIC_STAPLE_IMAGES.get(clean_l) or self.STATIC_STAPLE_IMAGES.get(front_l)
             card = Card(
                 id=f"syn_{clean_l.replace(' ', '_')}",
                 name=clean,
@@ -174,6 +177,7 @@ class ScryfallClient:
                 type_line=meta.get("type_line", "Spell"),
                 colors=meta.get("colors", []),
                 color_identity=meta.get("color_identity", []),
+                image_uris=CardImageUris(normal=img_u) if img_u else None,
             )
             self._cache_card(card)
             return card
@@ -182,11 +186,12 @@ class ScryfallClient:
         try:
             from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
             for reg_k, reg_v in CARD_METADATA_REGISTRY.items():
-                if reg_k.lower() == clean_l:
+                reg_low = reg_k.lower()
+                if reg_low == clean_l or reg_low == front_l:
                     cmc_val, colors_val, typ_val, _ = reg_v
                     card = Card(
                         id=f"syn_{clean_l.replace(' ', '_')}",
-                        name=reg_k,
+                        name=reg_k if reg_low == clean_l else clean,
                         cmc=cmc_val,
                         type_line=typ_val,
                         colors=list(colors_val),
@@ -202,11 +207,15 @@ class ScryfallClient:
         type_line = "Land" if is_land else "Spell"
         cmc = 0.0 if is_land else 3.0
 
+        import urllib.parse
+        img_url = f"https://api.scryfall.com/cards/named?fuzzy={urllib.parse.quote(front_l)}&format=image"
+
         card = Card(
             id=f"syn_{clean_l.replace(' ', '_')}",
             name=clean,
             cmc=cmc,
             type_line=type_line,
+            image_uris=CardImageUris(normal=img_url),
         )
         self._cache_card(card)
         return card
@@ -359,6 +368,7 @@ class ScryfallClient:
         # Build list of unique identifiers needed
         identifiers_to_query: List[Dict[str, Any]] = []
         seen_queries: Set[str] = set()
+        ident_to_clean_name: Dict[str, str] = {}
 
         # Check in-memory cache first
         for item in all_items:
@@ -371,10 +381,10 @@ class ScryfallClient:
                 query_dict: Dict[str, Any] = {}
                 if item.set_code and item.collector_number:
                     query_dict = {"set": item.set_code, "collector_number": item.collector_number}
-                    q_key = f"set:{item.set_code}:{item.collector_number}"
+                    q_key = f"set:{item.set_code.lower()}:{item.collector_number.lower()}"
                 elif item.set_code:
                     query_dict = {"name": clean, "set": item.set_code}
-                    q_key = f"name_set:{clean.lower()}:{item.set_code}"
+                    q_key = f"name_set:{clean.lower()}:{item.set_code.lower()}"
                 else:
                     query_dict = {"name": clean}
                     q_key = f"name:{clean.lower()}"
@@ -382,17 +392,40 @@ class ScryfallClient:
                 if q_key not in seen_queries:
                     seen_queries.add(q_key)
                     identifiers_to_query.append(query_dict)
+                    ident_to_clean_name[q_key] = clean
 
         # Batch query Scryfall for un-cached cards if not rate limited
         if identifiers_to_query:
             resolved_cards, not_found = self.fetch_cards_collection(identifiers_to_query)
 
-            # If some cards failed with set/collector_number, retry fallback by name
+            # If some cards failed with set/collector_number or exact name, retry fallback by clean name
             fallback_by_name: List[Dict[str, Any]] = []
+            fallback_seen: Set[str] = set()
             for nf in not_found:
-                if "name" in nf:
-                    clean_nf = self.clean_card_name(nf["name"])
-                    fallback_by_name.append({"name": clean_nf})
+                clean_target = None
+                if "set" in nf and "collector_number" in nf:
+                    q_k = f"set:{str(nf['set']).lower()}:{str(nf['collector_number']).lower()}"
+                    clean_target = ident_to_clean_name.get(q_k)
+                elif "name" in nf:
+                    clean_target = nf["name"]
+
+                if not clean_target:
+                    for it in all_items:
+                        if it.set_code == nf.get("set") and it.collector_number == nf.get("collector_number"):
+                            clean_target = self.clean_card_name(it.raw_name)
+                            break
+
+                if clean_target:
+                    c_clean = self.clean_card_name(clean_target)
+                    c_key = c_clean.lower()
+                    if c_key not in fallback_seen and c_key not in self._cache_by_name:
+                        fallback_seen.add(c_key)
+                        fallback_by_name.append({"name": c_clean})
+                    if " // " in c_clean:
+                        front = c_clean.split(" // ")[0].strip()
+                        if front.lower() not in fallback_seen and front.lower() not in self._cache_by_name:
+                            fallback_seen.add(front.lower())
+                            fallback_by_name.append({"name": front})
 
             if fallback_by_name and time.time() >= self.rate_limited_until:
                 retry_cards, _ = self.fetch_cards_collection(fallback_by_name)
@@ -403,6 +436,8 @@ class ScryfallClient:
         for item in all_items:
             if not item.card:
                 item.card = self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
+                if not item.card and time.time() >= self.rate_limited_until:
+                    item.card = self.get_card_by_name(item.raw_name, set_code=item.set_code)
                 if not item.card:
                     item.card = self._create_synthetic_fallback_card(item.raw_name)
 
@@ -462,11 +497,18 @@ class ScryfallClient:
             if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
                 return c.image_uris.normal
 
+        # Check front face in cache
+        front = clean.split(" // ")[0].split(" / ")[0].strip()
+        front_l = front.lower()
+        if front_l in self._cache_by_name:
+            c = self._cache_by_name[front_l]
+            if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
+                return c.image_uris.normal
+
         cached = self._find_in_cache(clean, None, None)
         if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io/back.jpg" not in cached.image_uris.normal:
             return cached.image_uris.normal
 
         # Direct CDN redirect URL using fuzzy front face for 100% reliable image loading in browser
-        front = clean.split(" // ")[0].split(" / ")[0].strip()
         return f"https://api.scryfall.com/cards/named?fuzzy={urllib.parse.quote(front)}&format=image"
 

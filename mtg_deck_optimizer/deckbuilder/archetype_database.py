@@ -19,7 +19,10 @@ CARD_METADATA_REGISTRY: Dict[str, Tuple[float, List[str], str, float]] = {
     "Veyran, Voice of Duality": (3.0, ["U", "R"], "Legendary Creature — Efreet Wizard", 6.50),
     "Niv-Mizzet, Parun": (6.0, ["U", "R"], "Legendary Creature — Dragon Wizard", 2.00),
     "Birgi, God of Storytelling": (3.0, ["R"], "Legendary Creature — God", 12.00),
+    "Birgi, God of Storytelling // Harnfel, Horn of Bounty": (3.0, ["R"], "Legendary Creature — God // Legendary Artifact", 12.00),
     "Kess, Dissident Mage": (4.0, ["U", "B", "R"], "Legendary Creature — Zombie Wizard", 1.50),
+    "Norman Osborn // Green Goblin": (3.0, ["U", "B", "R"], "Legendary Creature — Human Scientist // Legendary Creature — Goblin Villain", 8.00),
+    "Norman Osborn": (3.0, ["U", "B", "R"], "Legendary Creature — Human Scientist", 8.00),
 
     "Omnath, Locus of Creation": (4.0, ["W", "U", "R", "G"], "Legendary Creature — Elemental", 10.00),
     "Lord Windgrace": (5.0, ["B", "R", "G"], "Legendary Planeswalker — Windgrace", 8.00),

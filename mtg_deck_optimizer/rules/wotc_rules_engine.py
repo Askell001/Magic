@@ -203,10 +203,8 @@ class WOTC_Commander_Rules_Engine:
         Performs a full audit of an entire Commander deck against all WotC Commander rules.
         """
         commander_cards = [it.card for it in deck.commanders if it.card]
-        if commander_cards:
-            cmdr_ci = self.extract_commander_color_identity(commander_cards)
-        else:
-            cmdr_ci = deck.color_identity
+        extracted_ci = self.extract_commander_color_identity(commander_cards) if commander_cards else []
+        cmdr_ci = extracted_ci if extracted_ci else (deck.color_identity or [])
 
         cmdr_names = [it.effective_name for it in deck.commanders]
         color_errors: List[str] = []
@@ -288,10 +286,8 @@ class WOTC_Commander_Rules_Engine:
             if c:
                 commander_cards.append(c)
 
-        if commander_cards:
-            cmdr_ci = self.extract_commander_color_identity(commander_cards)
-        else:
-            cmdr_ci = deck.color_identity or ["C"]
+        extracted_ci = self.extract_commander_color_identity(commander_cards) if commander_cards else []
+        cmdr_ci = extracted_ci if extracted_ci else (deck.color_identity or ["C"])
 
         existing_names: Set[str] = {
             it.effective_name.strip().lower() for it in deck.commanders + deck.maindeck
