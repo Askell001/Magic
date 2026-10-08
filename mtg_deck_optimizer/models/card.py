@@ -155,7 +155,9 @@ class Card(BaseModel):
                         image_uris=CardImageUris(**f_imgs) if f_imgs else None,
                     )
                 )
-            # If top-level mana_cost or oracle_text is missing, aggregate or use first face
+            # If top-level type_line, mana_cost, or oracle_text is missing, aggregate from faces
+            if not type_line and faces:
+                type_line = " // ".join(f.type_line for f in faces if f.type_line)
             if not mana_cost and faces:
                 mana_cost = faces[0].mana_cost
             if not oracle_text and faces:
@@ -165,6 +167,15 @@ class Card(BaseModel):
 
         images = CardImageUris(**img_dict) if img_dict else None
         prices = CardPrices.from_scryfall(data.get("prices"))
+
+        # Aggregate colors from faces if missing at top level
+        colors = data.get("colors")
+        if not colors and faces:
+            colors = []
+            for f in faces:
+                for c in (f.colors or []):
+                    if c not in colors:
+                        colors.append(c)
 
         return cls(
             id=data["id"],

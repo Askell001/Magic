@@ -204,10 +204,41 @@ class ScryfallClient:
         except Exception:
             pass
 
-        # Basic type heuristics
-        is_land = any(k in clean_l for k in ["land", "plains", "island", "swamp", "mountain", "forest", "tomb", "crypt", "mire", "mesa", "delta", "strand", "foothills", "heath", "sanctuary", "shrine", "pool", "fountain", "garden", "graveyard", "tower", "city", "boseiju", "otawara", "eiganjo", "takenuma", "sokenzan"])
-        type_line = "Land" if is_land else "Spell"
-        cmc = 0.0 if is_land else 3.0
+        # Comprehensive MTG Lexical & Semantic Type Inference
+        type_line = "Creature"
+        cmc = 3.0
+
+        # 1. Lands
+        if any(k in clean_l for k in ["land", "plains", "island", "swamp", "mountain", "forest", "wastes", "sanctuary", "grove", "tomb", "shrine", "foundry", "pool", "delta", "mire", "tarn", "strand", "mesa", "catacombs", "foothills", "heath", "tower", "orchard", "confluence", "city", "springs", "ridge", "estate", "village", "boseiju", "otawara", "eiganjo", "takenuma", "sokenzan", "glade", "depths", "pass", "cove", "harbor", "falls", "valley"]):
+            type_line = "Land"
+            cmc = 0.0
+        # 2. Planeswalkers
+        elif any(k in clean_l for k in ["jace", "teferi", "liliana", "chandra", "nissa", "ajani", "karn", "ugin", "bolas", "tamiyo", "narset", "oko", "elspeth", "gideon", "sorin", "vraska", "vivien", "kaya", "rowan", "will", "guff", "planeswalker"]):
+            type_line = "Legendary Planeswalker"
+            cmc = 4.0
+        # 3. Artifacts (Non-creature equipment, rocks, engines)
+        elif any(k in clean_l for k in ["sol ring", "signet", "talisman", "mox", "lotus", "boots", "greaves", "skullclamp", "monolith", "crypt", "vault", "bauble", "stone", "chalice", "lens", "sphere", "lantern", "reservoir", "ring", "altar", "statuary", "banner", "horn", "orb", "helm", "sword", "shield", "armor", "plate", "dynamo", "compass", "engine", "vessel", "crucible", "station", "matrix", "forge", "anvil", "cauldron", "sceptre", "scepter", "staff", "rod", "wand", "crown", "relic", "tome", "map", "key", "locket", "medallion", "apparatus", "device", "artifact"]):
+            type_line = "Artifact"
+            cmc = 2.0
+        # 4. Instants
+        elif any(k in clean_l for k in ["counterspell", "drain", "swords", "path", "gift", "protection", "silence", "bolt", "warp", "pongify", "hybridization", "resculpt", "flusterstorm", "denial", "song", "intervention", "charm", "veto", "command", "shift", "blink", "flicker", "consultation", "ritual", "dispute", "tear", "offer", "pact", "trap", "reversal", "misstep", "rebuttal", "stroke", "opt", "consider", "snuff", "push", "terminate", "blast", "grasp", "freeze", "vapor", "rollick", "guardianship", "swat", "maneuver", "deflecting", "instant"]):
+            type_line = "Instant"
+            cmc = 2.0
+        # 5. Enchantments
+        elif any(k in clean_l for k in ["study", "remora", "tithe", "library", "arena", "connections", "project", "breach", "season", "tax", "dreams", "caress", "notion", "talent", "class", "saga", "presence", "aura", "rancor", "ascendancy", "agony", "bonders", "vigor", "fervor", "market", "leyline", "court", "authority", "tribute", "confinement", "seal", "enchantment"]):
+            type_line = "Enchantment"
+            cmc = 3.0
+        # 6. Sorceries
+        elif any(k in clean_l for k in ["wrath", "damnation", "act", "farewell", "windfall", "wheel", "ponder", "preordain", "reanimate", "loot", "spiral", "cultivate", "reach", "lore", "visits", "zenith", "finale", "excision", "tutor", "probe", "buried", "entomb", "victimize", "persist", "gifts", "twister", "fabricate", "search", "consult", "reshape", "transmute", "demonic", "diabolic", "imperial", "personal", "solve", "merchant", "sorcery"]):
+            type_line = "Sorcery"
+            cmc = 3.0
+        # 7. Creatures (Character titles, names with commas or creatures)
+        elif "," in clean or " of " in clean_l or " the " in clean_l or "lord" in clean_l or "mage" in clean_l or "king" in clean_l or "queen" in clean_l or "dragon" in clean_l or "demon" in clean_l or "angel" in clean_l or "god" in clean_l:
+            type_line = "Legendary Creature"
+            cmc = 4.0
+        else:
+            type_line = "Creature"
+            cmc = 3.0
 
         img_u = self.STATIC_STAPLE_IMAGES.get(clean_l) or self.STATIC_STAPLE_IMAGES.get(front_l)
         if not img_u:
