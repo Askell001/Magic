@@ -124,7 +124,72 @@ class DeckExporter:
         return "\n".join(lines).strip()
 
     @classmethod
+    def export_to_mtga(cls, deck: Deck) -> str:
+        """
+        Formats deck for MTG Arena (MTGA) import.
+        Format:
+        Commander
+        1 Card Name
+        
+        Deck
+        1 Card Name
+        """
+        lines: List[str] = []
+        if deck.commanders:
+            lines.append("Commander")
+            for it in deck.commanders:
+                set_part = f" ({it.set_code.upper()}) {it.collector_number}" if it.set_code and it.collector_number else ""
+                lines.append(f"{it.quantity} {it.effective_name}{set_part}")
+            lines.append("")
+
+        lines.append("Deck")
+        for it in deck.maindeck:
+            set_part = f" ({it.set_code.upper()}) {it.collector_number}" if it.set_code and it.collector_number else ""
+            lines.append(f"{it.quantity} {it.effective_name}{set_part}")
+
+        if deck.sideboard:
+            lines.append("")
+            lines.append("Sideboard")
+            for it in deck.sideboard:
+                set_part = f" ({it.set_code.upper()}) {it.collector_number}" if it.set_code and it.collector_number else ""
+                lines.append(f"{it.quantity} {it.effective_name}{set_part}")
+
+        return "\n".join(lines).strip()
+
+    @classmethod
+    def export_to_mtgo(cls, deck: Deck) -> str:
+        """
+        Formats deck for Magic: The Gathering Online (MTGO) .txt / .dek import.
+        """
+        lines: List[str] = []
+        for it in deck.commanders:
+            lines.append(f"{it.quantity} {it.effective_name}")
+        for it in deck.maindeck:
+            lines.append(f"{it.quantity} {it.effective_name}")
+
+        if deck.sideboard:
+            lines.append("")
+            lines.append("SIDEBOARD:")
+            for it in deck.sideboard:
+                lines.append(f"{it.quantity} {it.effective_name}")
+
+        return "\n".join(lines).strip()
+
+    @classmethod
+    def export_to_plain_text(cls, deck: Deck) -> str:
+        """
+        Formats deck as simple clean '1 Card Name' list.
+        """
+        lines: List[str] = []
+        for it in deck.commanders:
+            lines.append(f"{it.quantity} {it.effective_name}")
+        for it in deck.maindeck:
+            lines.append(f"{it.quantity} {it.effective_name}")
+        return "\n".join(lines).strip()
+
+    @classmethod
     def export_to_text(cls, deck: Deck) -> str:
         """Alias for export_to_moxfield_text."""
         return cls.export_to_moxfield_text(deck)
+
 

@@ -78,3 +78,24 @@ def test_deck_exporter_apply_optimization_and_export_text():
     assert "// Mainboard" in export_text
     assert "1 Sol Ring (LEA) 270" in export_text
     assert "1 Miirym, Sentinel Wyrm" in export_text
+
+    # Check MTGA export string
+    mtga_text = DeckExporter.export_to_mtga(opt_deck)
+    assert "Commander" in mtga_text
+    assert "1 The Ur-Dragon (C17) 48" in mtga_text
+    assert "Deck" in mtga_text
+    assert "1 Sol Ring (LEA) 270" in mtga_text
+    assert "1 Miirym, Sentinel Wyrm" in mtga_text
+
+    # Check MTGO export string
+    mtgo_text = DeckExporter.export_to_mtgo(opt_deck)
+    assert "1 The Ur-Dragon" in mtgo_text
+    assert "1 Sol Ring" in mtgo_text
+    assert "1 Miirym, Sentinel Wyrm" in mtgo_text
+
+    # Check Plain text export string
+    plain_text = DeckExporter.export_to_plain_text(opt_deck)
+    assert "1 The Ur-Dragon" in plain_text
+    assert "1 Sol Ring" in plain_text
+    assert "1 Miirym, Sentinel Wyrm" in plain_text
+

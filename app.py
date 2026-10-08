@@ -277,47 +277,53 @@ if "Optimizar Mazo" in app_mode:
     with col_config:
         st.markdown("#### 🏆 Sistema Oficial de 5 Brackets WotC")
         opt_bracket_num = st.selectbox(
-            "Bracket Objetivo para el Mazo:",
+            "Bracket Objetivo para el Mazo * (Obligatorio):",
             options=[1, 2, 3, 4, 5],
-            index=2,
+            index=None,
+            placeholder="-- Selecciona un Bracket (1 al 5) --",
             format_func=lambda x: {
                 1: "Bracket 1: Exhibition (Ultra-Casual / Temático)",
                 2: "Bracket 2: Core (Preconstruido Promedio)",
                 3: "Bracket 3: Upgraded (Precon Mejorado / Optimizado Medio)",
                 4: "Bracket 4: Optimized (Alta Potencia)",
                 5: "Bracket 5: cEDH (Competitive Commander / Tournament Meta)",
-            }[x],
+            }.get(x, f"Bracket {x}"),
         )
 
-        # Real-time Bracket Specification Card
-        bracket_matrix = WOTC_Bracket_Engine.get_bracket_matrix()
-        b_info = bracket_matrix[opt_bracket_num]
+        b_info = None
+        if opt_bracket_num is not None:
+            # Real-time Bracket Specification Card
+            bracket_matrix = WOTC_Bracket_Engine.get_bracket_matrix()
+            b_info = bracket_matrix[opt_bracket_num]
 
-        st.markdown(
-            f"""
-            <div class="bracket-card">
-                <div style="font-size:1.05rem; font-weight:bold; color:#58a6ff; margin-bottom:6px;">
-                    🎯 Experiencia de Juego ({b_info['label']})
+            st.markdown(
+                f"""
+                <div class="bracket-card">
+                    <div style="font-size:1.05rem; font-weight:bold; color:#58a6ff; margin-bottom:6px;">
+                        🎯 Experiencia de Juego ({b_info['label']})
+                    </div>
+                    <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.4;">
+                        {b_info['experience']}
+                    </div>
+                    <div style="font-size:0.88rem; color:#8b949e; margin-bottom:8px;">
+                        <strong>📜 Reglas Oficiales:</strong> {b_info['deckbuilding_rules']}
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:0.82rem;">
+                        <span class="badge-gc">Game Changers: {'Máx ' + str(b_info['max_game_changers']) if b_info['max_game_changers'] < 900 else 'Ilimitados'}</span>
+                        <span class="badge-tier-a">Victoria Típica: {b_info['typical_win_turn']}</span>
+                        <span class="badge-tier-b">Curva Objetivo: {b_info['target_avg_cmc']} CMC</span>
+                    </div>
                 </div>
-                <div style="font-size:0.92rem; margin-bottom:8px; line-height:1.4;">
-                    {b_info['experience']}
-                </div>
-                <div style="font-size:0.88rem; color:#8b949e; margin-bottom:8px;">
-                    <strong>📜 Reglas Oficiales:</strong> {b_info['deckbuilding_rules']}
-                </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:0.82rem;">
-                    <span class="badge-gc">Game Changers: {'Máx ' + str(b_info['max_game_changers']) if b_info['max_game_changers'] < 900 else 'Ilimitados'}</span>
-                    <span class="badge-tier-a">Victoria Típica: {b_info['typical_win_turn']}</span>
-                    <span class="badge-tier-b">Curva Objetivo: {b_info['target_avg_cmc']} CMC</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
 
-        # Dynamically retrieve strategies compatible with the chosen bracket
-        bracket_strategies = get_strategies_by_bracket(opt_bracket_num)
-        if not bracket_strategies:
+            # Dynamically retrieve strategies compatible with the chosen bracket
+            bracket_strategies = get_strategies_by_bracket(opt_bracket_num)
+            if not bracket_strategies:
+                service = get_strategy_service()
+                bracket_strategies = service.get_all_strategies()
+        else:
             service = get_strategy_service()
             bracket_strategies = service.get_all_strategies()
 
@@ -339,12 +345,14 @@ if "Optimizar Mazo" in app_mode:
             strategy_display_map[strat_label] = resolved_s
             strategy_options.append(strat_label)
 
+        strat_prompt = f"🎯 Estrategia / Arquetipo Objetivo (Filtrado para Bracket {opt_bracket_num}):" if opt_bracket_num else "🎯 Estrategia / Arquetipo Objetivo * (Obligatorio):"
         selected_strat_label = st.selectbox(
-            f"🎯 Estrategia / Arquetipo Objetivo (Filtrado para Bracket {opt_bracket_num}):",
-            options=strategy_options if strategy_options else ["General Commander Synergy"],
-            index=0,
+            strat_prompt,
+            options=strategy_options,
+            index=None,
+            placeholder="-- Selecciona una Estrategia --",
         )
-        selected_strategy = strategy_display_map.get(selected_strat_label, {})
+        selected_strategy = strategy_display_map.get(selected_strat_label, {}) if selected_strat_label else {}
         st.session_state.selected_strategy = selected_strategy
 
         # Strategy Preview Card
@@ -412,82 +420,102 @@ if "Optimizar Mazo" in app_mode:
                     pre_cmdr = clean_l
                     break
         
-        pre_deck, _ = ingestion_service.ingest_from_text(
-            raw_text=deck_text_input,
-            deck_name="Deck Preview",
-            commander_override=pre_cmdr,
-        )
-        pre_audit_report = WOTC_Bracket_Engine.audit_deck(pre_deck, opt_bracket_num)
-
-        if not pre_audit_report.is_legal_for_bracket and not has_banned_block:
-            st.markdown(
-                f"""
-                <div class="alert-box-red">
-                    <div style="font-size:1.15rem; font-weight:bold; margin-bottom:6px;">
-                        🚨 ALERTA DE INFRACCIÓN: El mazo ingresado viola las reglas de Bracket {opt_bracket_num} ({b_info['label']})
-                    </div>
-                    <div style="font-size:0.95rem; margin-bottom:10px;">
-                        {pre_audit_report.actionable_summary}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        if opt_bracket_num is not None:
+            pre_deck, _ = ingestion_service.ingest_from_text(
+                raw_text=deck_text_input,
+                deck_name="Deck Preview",
+                commander_override=pre_cmdr,
             )
+            pre_audit_report = WOTC_Bracket_Engine.audit_deck(pre_deck, opt_bracket_num)
 
-            # Violations breakdown table / visual cards
-            st.markdown(f"#### ⚠️ Cartas que deben ser removidas para cumplir con Bracket {opt_bracket_num}:")
-            v_cols = st.columns(min(len(pre_audit_report.cards_to_remove), 3) if pre_audit_report.cards_to_remove else 1)
-            
-            for r_idx, rem in enumerate(pre_audit_report.cards_to_remove):
-                with v_cols[r_idx % len(v_cols)]:
-                    st.markdown(f"<span class='badge-out'>❌ SACAR</span> **{rem.card_name}**", unsafe_allow_html=True)
-                    st.image(get_card_image_url(rem.card_name), use_container_width=True)
-                    st.caption(f"**Motivo:** {rem.reason}")
-                    if rem.suggested_replacements:
-                        st.markdown(f"**Sustitutos sugeridos:** {', '.join(rem.suggested_replacements[:2])}")
+            if not pre_audit_report.is_legal_for_bracket and not has_banned_block:
+                st.markdown(
+                    f"""
+                    <div class="alert-box-red">
+                        <div style="font-size:1.15rem; font-weight:bold; margin-bottom:6px;">
+                            🚨 ALERTA DE INFRACCIÓN: El mazo ingresado viola las reglas de Bracket {opt_bracket_num} ({b_info['label'] if b_info else ''})
+                        </div>
+                        <div style="font-size:0.95rem; margin-bottom:10px;">
+                            {pre_audit_report.actionable_summary}
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-            # Auto-Remediation One-Click Button
-            if st.button(f"🔧 Auto-Corregir Lista de Mazo para Bracket {opt_bracket_num}", type="secondary", use_container_width=True):
-                updated_lines = []
-                # Map cuts to replacements
-                replacements_map = {}
-                for rem in pre_audit_report.cards_to_remove:
-                    if rem.suggested_replacements:
-                        replacements_map[rem.card_name.lower()] = rem.suggested_replacements[0]
+                # Violations breakdown table / visual cards
+                st.markdown(f"#### ⚠️ Cartas que deben ser removidas para cumplir con Bracket {opt_bracket_num}:")
+                v_cols = st.columns(min(len(pre_audit_report.cards_to_remove), 3) if pre_audit_report.cards_to_remove else 1)
+                
+                for r_idx, rem in enumerate(pre_audit_report.cards_to_remove):
+                    with v_cols[r_idx % len(v_cols)]:
+                        st.markdown(f"<span class='badge-out'>❌ SACAR</span> **{rem.card_name}**", unsafe_allow_html=True)
+                        st.image(get_card_image_url(rem.card_name), use_container_width=True)
+                        st.caption(f"**Motivo:** {rem.reason}")
+                        if rem.suggested_replacements:
+                            st.markdown(f"**Sustitutos sugeridos:** {', '.join(rem.suggested_replacements[:2])}")
 
-                for line in deck_text_input.splitlines():
-                    clean_name = ingestion_service.scryfall.clean_card_name(line)
-                    if clean_name.lower() in replacements_map:
-                        new_card = replacements_map[clean_name.lower()]
-                        # replace card name in line while preserving quantity
-                        if line.strip().startswith("1 ") or line.strip().startswith("1x "):
-                            updated_lines.append(f"1 {new_card}")
+                # Auto-Remediation One-Click Button
+                if st.button(f"🔧 Auto-Corregir Lista de Mazo para Bracket {opt_bracket_num}", type="secondary", use_container_width=True):
+                    updated_lines = []
+                    # Map cuts to replacements
+                    replacements_map = {}
+                    for rem in pre_audit_report.cards_to_remove:
+                        if rem.suggested_replacements:
+                            replacements_map[rem.card_name.lower()] = rem.suggested_replacements[0]
+
+                    for line in deck_text_input.splitlines():
+                        clean_name = ingestion_service.scryfall.clean_card_name(line)
+                        if clean_name.lower() in replacements_map:
+                            new_card = replacements_map[clean_name.lower()]
+                            # replace card name in line while preserving quantity
+                            if line.strip().startswith("1 ") or line.strip().startswith("1x "):
+                                updated_lines.append(f"1 {new_card}")
+                            else:
+                                updated_lines.append(new_card)
                         else:
-                            updated_lines.append(new_card)
-                    else:
-                        updated_lines.append(line)
+                            updated_lines.append(line)
 
-                new_text = "\n".join(updated_lines)
-                st.session_state.raw_decklist = new_text
-                st.success(f"✨ ¡Lista de mazo auto-corregida con sustitutos legales para Bracket {opt_bracket_num}!")
-                st.rerun()
+                    new_text = "\n".join(updated_lines)
+                    st.session_state.raw_decklist = new_text
+                    st.success(f"✨ ¡Lista de mazo auto-corregida con sustitutos legales para Bracket {opt_bracket_num}!")
+                    st.rerun()
 
-        elif opt_bracket_num in [1, 2, 3]:
-            st.markdown(
-                f"""
-                <div class="alert-box-green">
-                    <div style="font-weight:bold; font-size:1.05rem;">
-                        ✅ ¡Verificación Exitosa! El mazo cumple 100% con las restricciones de Bracket {opt_bracket_num} ({b_info['label']}).
+            elif opt_bracket_num in [1, 2, 3] and not has_banned_block:
+                st.markdown(
+                    f"""
+                    <div class="alert-box-green">
+                        <div style="font-weight:bold; font-size:1.05rem;">
+                            ✅ ¡Verificación Exitosa! El mazo cumple 100% con las restricciones de Bracket {opt_bracket_num} ({b_info['label'] if b_info else ''}).
+                        </div>
                     </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    # Foolproof UX: Validate all mandatory fields before enabling action button
+    has_deck_text = bool(deck_text_input.strip())
+    has_bracket_selected = (opt_bracket_num is not None)
+    has_strat_selected = bool(selected_strat_label)
+    can_process = has_deck_text and has_bracket_selected and has_strat_selected and not has_banned_block
+
+    if not can_process:
+        missing_fields = []
+        if not has_deck_text:
+            missing_fields.append("📝 Pegar la lista de cartas del mazo")
+        if not has_bracket_selected:
+            missing_fields.append("🏆 Seleccionar un Bracket Objetivo (1 al 5)")
+        if not has_strat_selected:
+            missing_fields.append("🎯 Seleccionar una Estrategia / Arquetipo")
+        if has_banned_block:
+            missing_fields.append("🚫 Retirar cartas prohibidas por la Banlist oficial")
+
+        st.warning("⚠️ **Completa los siguientes campos obligatorios para habilitar el procesamiento:**\n" + "\n".join(f"- {f}" for f in missing_fields))
 
     # Transition to Step 2
     col_btn_proc, col_btn_clear = st.columns([3, 1])
     with col_btn_proc:
-        analyze_btn = st.button("▶️ Procesar y Analizar Mazo (Pasar al Paso 2)", type="primary", use_container_width=True)
+        analyze_btn = st.button("▶️ Procesar y Analizar Mazo (Pasar al Paso 2)", type="primary", use_container_width=True, disabled=not can_process)
     with col_btn_clear:
         if st.button("🔄 Limpiar / Reset", use_container_width=True):
             st.session_state.deck_analyzed = False
@@ -499,7 +527,7 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.raw_decklist = ""
             st.rerun()
 
-    if analyze_btn:
+    if analyze_btn and can_process:
         if not deck_text_input.strip():
             st.warning("⚠️ Por favor ingresa una lista de mazo antes de procesar.")
         else:
@@ -973,36 +1001,134 @@ if "Optimizar Mazo" in app_mode:
         st.bar_chart(curve_df, color=["#58a6ff", "#3fb950"])
 
         # ---------------------------------------------------------------------
-        # Export
+        # Multi-Format Deck Exporter
         # ---------------------------------------------------------------------
         st.divider()
-        st.subheader("📦 Exportador a Moxfield / Archidekt")
-        st.text_area("Lista optimizada:", value=export_text, height=220)
-        st.download_button(
-            label="💾 Descargar Mazo (.txt)",
-            data=export_text,
-            file_name=f"{opt_deck.name.replace(' ', '_').lower()}.txt",
-            mime="text/plain",
-            type="primary",
-        )
+        st.subheader("📦 Exportador Multi-Formato Oficial")
+        st.caption("Exporta tu lista optimizada con 1 clic en el formato nativo de tu simulador o plataforma preferida:")
+
+        mox_tab, mtga_tab, mtgo_tab, plain_tab = st.tabs([
+            "📋 Moxfield / Archidekt",
+            "⚔️ MTG Arena (MTGA)",
+            "🖥️ MTG Online (MTGO)",
+            "📄 Texto Plano",
+        ])
+
+        mox_text = DeckExporter.export_to_moxfield_text(opt_deck)
+        mtga_text = DeckExporter.export_to_mtga(opt_deck)
+        mtgo_text = DeckExporter.export_to_mtgo(opt_deck)
+        plain_text = DeckExporter.export_to_plain_text(opt_deck)
+
+        with mox_tab:
+            st.text_area("Formato Moxfield / Archidekt:", value=mox_text, height=200, key="export_mox_m1")
+            st.download_button(
+                label="💾 Descargar para Moxfield (.txt)",
+                data=mox_text,
+                file_name=f"{opt_deck.name.replace(' ', '_').lower()}_moxfield.txt",
+                mime="text/plain",
+                type="primary",
+                key="btn_mox_m1",
+            )
+
+        with mtga_tab:
+            st.text_area("Formato MTG Arena:", value=mtga_text, height=200, key="export_mtga_m1")
+            st.download_button(
+                label="💾 Descargar para MTGA (.txt)",
+                data=mtga_text,
+                file_name=f"{opt_deck.name.replace(' ', '_').lower()}_mtga.txt",
+                mime="text/plain",
+                key="btn_mtga_m1",
+            )
+
+        with mtgo_tab:
+            st.text_area("Formato MTG Online (.dek / .txt):", value=mtgo_text, height=200, key="export_mtgo_m1")
+            st.download_button(
+                label="💾 Descargar para MTGO (.txt)",
+                data=mtgo_text,
+                file_name=f"{opt_deck.name.replace(' ', '_').lower()}_mtgo.txt",
+                mime="text/plain",
+                key="btn_mtgo_m1",
+            )
+
+        with plain_tab:
+            st.text_area("Formato Texto Plano:", value=plain_text, height=200, key="export_plain_m1")
+            st.download_button(
+                label="💾 Descargar Texto Plano (.txt)",
+                data=plain_text,
+                file_name=f"{opt_deck.name.replace(' ', '_').lower()}_plain.txt",
+                mime="text/plain",
+                key="btn_plain_m1",
+            )
 
 # =============================================================================
 # MODO 2: MTG DECKBUILDER GENERATOR (CONSTRUCCIÓN DESDE CERO - 5 BRACKETS)
 # =============================================================================
 else:
-    st.markdown('<div class="step-header">🔨 MTG Deckbuilder Generator: Construcción de Mazo desde Cero</div>', unsafe_allow_html=True)
-    st.markdown("Especifica tus parámetros estratégicos o selecciona entre los Comandantes visuales recomendados para sintetizar un mazo de 100 cartas perfectamente balanceado y conforme al sistema oficial de 5 Brackets de WotC.")
+    st.markdown('<div class="step-header">🔨 MTG Deckbuilder Generator: Construcción de Mazo desde Cero (5 Brackets)</div>', unsafe_allow_html=True)
+    st.markdown("Sintetiza un mazo de 100 cartas perfectamente balanceado, sinérgico y conforme a rajatabla con el sistema oficial de 5 Brackets de WotC.")
 
     gen_col1, gen_col2 = st.columns([1, 1])
 
     with gen_col1:
         gen_bracket = st.selectbox(
-            "Bracket Objetivo para Construcción:",
+            "Bracket Objetivo para Construcción * (Obligatorio):",
             [1, 2, 3, 4, 5],
-            index=2,
-            format_func=lambda x: f"Bracket {x} - { {1:'Exhibition (0 Game Changers, Jank)', 2:'Core EDH (0 Game Changers, Precon)', 3:'Upgraded (Máx 3 Game Changers)', 4:'Optimized (Alta Potencia)', 5:'cEDH (Meta Competitivo)'}[x] }",
+            index=None,
+            placeholder="-- Selecciona un Bracket (1 al 5) --",
+            format_func=lambda x: {
+                1: "Bracket 1: Exhibition (0 Game Changers, Jank / Temático)",
+                2: "Bracket 2: Core (0 Game Changers, Nivel Precon)",
+                3: "Bracket 3: Upgraded (Máx 3 Game Changers, Optimizado Medio)",
+                4: "Bracket 4: Optimized (Alta Potencia, Sin restricciones)",
+                5: "Bracket 5: cEDH (Competitive Commander / Tournament Meta)",
+            }.get(x, f"Bracket {x}"),
+            key="gen_bracket_select",
         )
-        gen_strat = st.selectbox("Estrategia / Arquetipo:", list(ARCHETYPE_DEFINITIONS.keys()))
+
+        # Retrieve bracket strategies dynamically from MongoDB / Cache
+        if gen_bracket is not None:
+            available_strategies = get_strategies_by_bracket(gen_bracket)
+            if not available_strategies:
+                service = get_strategy_service()
+                available_strategies = service.get_all_strategies()
+        else:
+            service = get_strategy_service()
+            available_strategies = service.get_all_strategies()
+
+        # Build dynamic strategy options map
+        gen_strat_map = {}
+        gen_strat_options = []
+        cur_gen_cmdr = st.session_state.chosen_gen_cmdr
+        for s in available_strategies:
+            resolved_s = resolve_dynamic_strategy(s, cur_gen_cmdr)
+            s_label = f"{resolved_s['name']} ({resolved_s.get('category', 'General')})"
+            gen_strat_map[s_label] = resolved_s
+            gen_strat_options.append(s_label)
+
+        gen_strat_prompt = f"🎯 Estrategia / Arquetipo * (Filtrado para Bracket {gen_bracket}):" if gen_bracket is not None else "🎯 Estrategia / Arquetipo * (Obligatorio):"
+        gen_strat_label = st.selectbox(
+            gen_strat_prompt,
+            options=gen_strat_options,
+            index=None,
+            placeholder="-- Selecciona una Estrategia --",
+            key="gen_strat_select",
+        )
+        selected_gen_strategy = gen_strat_map.get(gen_strat_label, {}) if gen_strat_label else {}
+        selected_archetype_key = selected_gen_strategy.get("id", "") if selected_gen_strategy else ""
+
+        if selected_gen_strategy:
+            s_elems = selected_gen_strategy.get("key_elements", [])
+            s_elems_str = " · ".join(s_elems[:3]) if s_elems else ""
+            st.markdown(
+                f"""
+                <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 14px; margin-top:-6px; margin-bottom:12px; font-size:0.86rem;">
+                    <div style="font-weight:bold; color:#58a6ff; margin-bottom:4px;">📖 Plan de Juego: {selected_gen_strategy.get('name', '')}</div>
+                    <div style="color:#c9d1d9; margin-bottom:6px; line-height:1.35;">{selected_gen_strategy.get('description', '')}</div>
+                    {f'<div style="color:#8b949e;"><strong>⚡ Elementos Clave:</strong> {s_elems_str}</div>' if s_elems_str else ''}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     with gen_col2:
         gen_budget_unlimited = st.checkbox("Presupuesto Ilimitado", value=True, key="gen_unlimited")
@@ -1010,59 +1136,97 @@ else:
         if not gen_budget_unlimited:
             gen_max_budget = st.number_input("Presupuesto Máximo (USD):", min_value=20.0, value=250.0, step=25.0)
 
-    st.markdown("#### 👑 Selección de Comandante")
-    st.caption("Puedes escribir el nombre de un Comandante o hacer clic en una de las recomendaciones visuales optimizadas para la estrategia elegida:")
+    st.markdown("#### 👑 Selección de Comandante * (Obligatorio)")
+    st.caption("Escribe el nombre de tu Comandante o haz clic en una de las recomendaciones optimizadas:")
 
-    suggested_cmdrs = deckbuilder_gen.suggest_commanders(gen_strat, target_bracket=gen_bracket)
-    s_cols = st.columns(min(len(suggested_cmdrs), 4) if suggested_cmdrs else 1)
+    if selected_archetype_key and gen_bracket is not None:
+        suggested_cmdrs = deckbuilder_gen.suggest_commanders(selected_archetype_key, target_bracket=gen_bracket)
+    else:
+        suggested_cmdrs = []
 
-    for s_idx, cmdr in enumerate(suggested_cmdrs):
-        with s_cols[s_idx % len(s_cols)]:
-            img_c_url = get_card_image_url(cmdr.name)
-            st.image(img_c_url, use_container_width=True)
-            st.markdown(f"**{cmdr.name}**")
-            st.caption(f"🎨 Identidad: {''.join(cmdr.color_identity)} | {cmdr.reason}")
-            if st.button(f"Seleccionar {cmdr.name}", key=f"btn_cmdr_{s_idx}"):
-                st.session_state.chosen_gen_cmdr = cmdr.name
+    if suggested_cmdrs:
+        s_cols = st.columns(min(len(suggested_cmdrs), 4))
+        for s_idx, cmdr in enumerate(suggested_cmdrs):
+            with s_cols[s_idx % len(s_cols)]:
+                img_c_url = get_card_image_url(cmdr.name)
+                st.image(img_c_url, use_container_width=True)
+                st.markdown(f"**{cmdr.name}**")
+                st.caption(f"🎨 {''.join(cmdr.color_identity)} | {cmdr.reason}")
+                if st.button(f"Seleccionar {cmdr.name}", key=f"btn_cmdr_{s_idx}"):
+                    st.session_state.chosen_gen_cmdr = cmdr.name
+                    st.rerun()
 
-    typed_cmdr = st.text_input("O escribe directamente el Comandante deseado:", value=st.session_state.chosen_gen_cmdr or "")
-    if typed_cmdr:
+    typed_cmdr = st.text_input(
+        "Nombre del Comandante deseado:",
+        value=st.session_state.chosen_gen_cmdr or "",
+        placeholder="Ej: Yuriko, the Tiger's Shadow, Korvold, Fae-Cursed King, Atraxa, Praetors' Voice...",
+    )
+    if typed_cmdr != (st.session_state.chosen_gen_cmdr or ""):
         st.session_state.chosen_gen_cmdr = typed_cmdr
 
+    # Real-time EDHREC preview if commander is specified
+    if st.session_state.chosen_gen_cmdr and gen_bracket is not None:
+        with st.expander(f"🌐 Ver Sugerencias Comunitarias (EDHREC) para {st.session_state.chosen_gen_cmdr}", expanded=False):
+            edh_eng = get_edhrec_engine()
+            raw_edh = edh_eng.fetch_edhrec_data(st.session_state.chosen_gen_cmdr)
+            if raw_edh.get("highsynergycards") or raw_edh.get("topcards"):
+                st.caption("Top cartas más sinérgicas y populares extraídas desde la base de datos de EDHREC:")
+                edh_cards_to_show = (raw_edh.get("highsynergycards", [])[:3] + raw_edh.get("topcards", [])[:3])
+                e_cols = st.columns(min(len(edh_cards_to_show), 6))
+                for e_i, e_c in enumerate(edh_cards_to_show):
+                    with e_cols[e_i % len(e_cols)]:
+                        st.image(get_card_image_url(e_c["name"]), use_container_width=True)
+                        st.markdown(f"**{e_c['name']}**")
+                        syn_val = e_c.get("synergy", 0)
+                        st.caption(f"Sinergia: `{syn_val:+.0%}`" if isinstance(syn_val, float) else f"Sinergia: `{syn_val}`")
+
+    # Foolproof UX: Action Button Locking
+    has_gen_bracket = (gen_bracket is not None)
+    has_gen_strat = bool(gen_strat_label)
+    has_gen_cmdr = bool(st.session_state.chosen_gen_cmdr and st.session_state.chosen_gen_cmdr.strip())
+    can_build = has_gen_bracket and has_gen_strat and has_gen_cmdr
+
+    if not can_build:
+        gen_missing = []
+        if not has_gen_bracket:
+            gen_missing.append("🏆 Seleccionar un Bracket Objetivo (1 al 5)")
+        if not has_gen_strat:
+            gen_missing.append("🎯 Seleccionar una Estrategia / Arquetipo")
+        if not has_gen_cmdr:
+            gen_missing.append("👑 Seleccionar o escribir un Comandante")
+        st.warning("⚠️ **Completa los siguientes campos obligatorios para generar el mazo:**\n" + "\n".join(f"- {f}" for f in gen_missing))
+
     st.divider()
-    if st.button("🔨 Construir Mazo de 100 Cartas", type="primary", use_container_width=True):
-        if not st.session_state.chosen_gen_cmdr:
-            st.error("Por favor selecciona o escribe un Comandante para comenzar la construcción.")
-        else:
-            gen_progress = st.progress(0)
-            gen_status = st.empty()
+    if st.button("🔨 Construir Mazo de 100 Cartas", type="primary", use_container_width=True, disabled=not can_build):
+        gen_progress = st.progress(0)
+        gen_status = st.empty()
 
-            gen_status.markdown("👑 **Paso 1/4:** Extrayendo identidad de color del Comandante y aplicando reglas WotC...")
-            gen_progress.progress(25)
-            time.sleep(0.05)
+        gen_status.markdown("👑 **Paso 1/4:** Extrayendo identidad de color del Comandante y aplicando reglas WotC...")
+        gen_progress.progress(25)
+        time.sleep(0.05)
 
-            gen_status.markdown(f"🃏 **Paso 2/4:** Ensamblando paquete de sinergia para '{gen_strat}' y aplicando cuota de Bracket {gen_bracket}...")
-            gen_progress.progress(50)
-            params = DeckbuilderParams(
-                commander_name=st.session_state.chosen_gen_cmdr,
-                target_bracket=int(gen_bracket),
-                strategy_archetype=gen_strat,
-                max_budget_usd=gen_max_budget,
-            )
-            time.sleep(0.05)
+        gen_status.markdown(f"🃏 **Paso 2/4:** Ensamblando paquete de sinergia para '{selected_gen_strategy.get('name', 'Estrategia')}' y aplicando cuota de Bracket {gen_bracket}...")
+        gen_progress.progress(50)
+        params = DeckbuilderParams(
+            commander_name=st.session_state.chosen_gen_cmdr.strip(),
+            target_bracket=int(gen_bracket),
+            strategy_archetype=selected_archetype_key or "general_synergy",
+            max_budget_usd=gen_max_budget,
+        )
+        time.sleep(0.05)
 
-            gen_status.markdown("🌲 **Paso 3/4:** Sintetizando base de maná equilibrada por pips y colores requeridos...")
-            gen_progress.progress(75)
-            gen_result = deckbuilder_gen.build_deck(params)
+        gen_status.markdown("🌲 **Paso 3/4:** Sintetizando base de maná equilibrada por pips y colores requeridos...")
+        gen_progress.progress(75)
+        gen_result = deckbuilder_gen.build_deck(params)
 
-            gen_status.markdown("✅ **Paso 4/4:** Validando singleton, banlist y exportador...")
-            gen_progress.progress(100)
-            time.sleep(0.1)
+        gen_status.markdown("✅ **Paso 4/4:** Validando singleton, banlist y exportador multi-formato...")
+        gen_progress.progress(100)
+        time.sleep(0.1)
 
-            gen_status.empty()
-            gen_progress.empty()
+        gen_status.empty()
+        gen_progress.empty()
 
-            st.session_state.generated_deck_result = gen_result
+        st.session_state.generated_deck_result = gen_result
 
     if st.session_state.generated_deck_result:
         res = st.session_state.generated_deck_result
@@ -1082,8 +1246,8 @@ else:
         else:
             st.warning(f"⚠️ Alertas WotC: {len(g_wotc.violations)} advertencias.")
 
-        # Visual Deck Gallery with row chunking to guarantee proper layout
-        g_tab_all, g_tab_export = st.tabs(["🖼️ Galería Visual del Mazo Generado", "📦 Exportar Lista"])
+        # Multi-tab view: Visual Gallery & Multi-Format Exporter
+        g_tab_all, g_tab_export = st.tabs(["🖼️ Galería Visual del Mazo Generado", "📦 Exportar Lista (Multi-Formato)"])
         
         with g_tab_all:
             g_items = g_deck.commanders + g_deck.maindeck
@@ -1097,11 +1261,56 @@ else:
                         st.caption(f"{it.card.type_line if it.card else ''}")
 
         with g_tab_export:
-            st.text_area("Lista generada lista para Moxfield / Archidekt:", value=res.export_text, height=300)
-            st.download_button(
-                label="💾 Descargar Mazo Generado (.txt)",
-                data=res.export_text,
-                file_name=f"{g_deck.name.replace(' ', '_').lower()}.txt",
-                mime="text/plain",
-                type="primary",
-            )
+            g_mox = DeckExporter.export_to_moxfield_text(g_deck)
+            g_mtga = DeckExporter.export_to_mtga(g_deck)
+            g_mtgo = DeckExporter.export_to_mtgo(g_deck)
+            g_plain = DeckExporter.export_to_plain_text(g_deck)
+
+            gx_mox, gx_mtga, gx_mtgo, gx_plain = st.tabs([
+                "📋 Moxfield / Archidekt",
+                "⚔️ MTG Arena (MTGA)",
+                "🖥️ MTG Online (MTGO)",
+                "📄 Texto Plano",
+            ])
+
+            with gx_mox:
+                st.text_area("Formato Moxfield / Archidekt:", value=g_mox, height=250, key="gen_mox_txt")
+                st.download_button(
+                    label="💾 Descargar para Moxfield (.txt)",
+                    data=g_mox,
+                    file_name=f"{g_deck.name.replace(' ', '_').lower()}_moxfield.txt",
+                    mime="text/plain",
+                    type="primary",
+                    key="btn_gen_mox",
+                )
+
+            with gx_mtga:
+                st.text_area("Formato MTG Arena:", value=g_mtga, height=250, key="gen_mtga_txt")
+                st.download_button(
+                    label="💾 Descargar para MTGA (.txt)",
+                    data=g_mtga,
+                    file_name=f"{g_deck.name.replace(' ', '_').lower()}_mtga.txt",
+                    mime="text/plain",
+                    key="btn_gen_mtga",
+                )
+
+            with gx_mtgo:
+                st.text_area("Formato MTG Online (.dek / .txt):", value=g_mtgo, height=250, key="gen_mtgo_txt")
+                st.download_button(
+                    label="💾 Descargar para MTGO (.txt)",
+                    data=g_mtgo,
+                    file_name=f"{g_deck.name.replace(' ', '_').lower()}_mtgo.txt",
+                    mime="text/plain",
+                    key="btn_gen_mtgo",
+                )
+
+            with gx_plain:
+                st.text_area("Formato Texto Plano:", value=g_plain, height=250, key="gen_plain_txt")
+                st.download_button(
+                    label="💾 Descargar Texto Plano (.txt)",
+                    data=g_plain,
+                    file_name=f"{g_deck.name.replace(' ', '_').lower()}_plain.txt",
+                    mime="text/plain",
+                    key="btn_gen_plain",
+                )
+
