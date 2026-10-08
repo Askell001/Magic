@@ -2,7 +2,7 @@
 User Intent data models capturing optimization goals, budget constraints, and protected cards.
 """
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 
 from ..brackets.standards import BracketTier, BRACKET_BENCHMARKS
@@ -29,6 +29,14 @@ class UserIntent(BaseModel):
     allow_fast_mana: Optional[bool] = Field(
         default=None,
         description="Permitir fast mana explícitamente (si es None, se usa el estándar del Bracket)",
+    )
+    strategy_profile: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Perfil teórico completo de la estrategia (nombre, descripción, elementos clave, win conditions)",
+    )
+    strategy_name: Optional[str] = Field(
+        default=None,
+        description="Nombre o identificador de la estrategia seleccionada",
     )
 
     @property

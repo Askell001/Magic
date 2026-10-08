@@ -1,0 +1,449 @@
+{
+  "strategies": [
+    {
+      "id": "landfall",
+      "name": "Landfall / Lands Matter",
+      "category": "Synergy & Value",
+      "description": "Estrategia basada en maximizar disparadores al poner tierras en juego. Utiliza aceleración masiva, tierras que se sacrifican (Fetch lands) y cartas que permiten jugar tierras desde el cementerio para generar ventaja abrumadora de recursos.",
+      "key_elements": [
+        "Extra land plays (Azusa, Exploration)",
+        "Fetch lands & recursion (Crucible of Worlds, Ramunap Excavator)",
+        "Landfall payoffs (Lotus Cobra, Scute Swarm, Titania)",
+        "Land-based wincons (Valakut, Field of the Dead)"
+      ],
+      "win_conditions": [
+        "Enjambre de fichas masivo",
+        "Daño directo continuo por entrada de tierras",
+        "Avanzada de maná e impacto con grandes amenazas"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "mass_land_destruction",
+      "name": "Mass Land Denial / Stax",
+      "category": "Resource Control",
+      "description": "Estrategia de control agresivo que destruye o deniega masivamente las fuentes de maná de los oponentes. Diseñada para congelar el desarrollo de la mesa mientras mantienes ventaja propia mediante artefactos de maná o flotado previo.",
+      "key_elements": [
+        "Armageddon / Ravages of War / Jokulhaups",
+        "Mana parity breakers (Teferi's Protection, Heroic Intervention)",
+        "Fast artifact mana",
+        "Resource lockdown (Winter Orb, Static Orb)"
+      ],
+      "win_conditions": [
+        "Bloqueo total de recursos seguido de daño con el Comandante",
+        "Rendición de la mesa por asfixia de maná"
+      ],
+      "brackets_compatible": [4, 5]
+    },
+    {
+      "id": "stompy",
+      "name": "Big Mana / Stompy",
+      "category": "Aggro & Ramp",
+      "description": "Se enfoca en generar enormes cantidades de maná rápidamente para desplegar criaturas de alto impacto y costes elevados mucho antes de lo habitual, sobrepasando las defensas rivales mediante arrollar (Trample).",
+      "key_elements": [
+        "Heavy ramp & mana dorks",
+        "High CMC threats (Ghalta, Apex Altisaur, Eldrazi)",
+        "Combat modifiers & Haste enablers",
+        "Card draw based on power (Greater Good, Rishkar's Expertise)"
+      ],
+      "win_conditions": [
+        "Daño de combate masivo en turnos tempranos o medios",
+        "Atropello con múltiples amenazas de alta fuerza"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    },
+    {
+      "id": "tribal_kindred",
+      "name": "Kindred / Tribal (Motor Dinámico)",
+      "category": "Tribal / Synergy",
+      "description": "Estrategia de sinergia absoluta entre criaturas del mismo subtipo. Este módulo inspecta el tipo de criatura del Comandante (ej. Dragon, Elf, Zombie, Vampire, Ninja, Warrior, Sliver) para recomendar cartas específicas de esa tribu.",
+      "is_dynamic_tribal": true,
+      "generic_tribal_staples": [
+        "Coat of Arms",
+        "Door of Destinies",
+        "Herald's Horn",
+        "Vanquisher's Banner",
+        "Kindred Dominance",
+        "Urza's Incubator",
+        "Path of Ancestry"
+      ],
+      "key_elements": [
+        "Lords de la tribu <COMMANDER_SUBTYPE>",
+        "Reductores de coste específicos",
+        "Tutores de tipo de criatura",
+        "Evasión e impulsos de ataque para la tribu"
+      ],
+      "win_conditions": [
+        "Enjambre tribal potenciado por efectos de Lord",
+        "Sinergias de combate o habilidades de disparo en masa de la tribu"
+      ],
+      "brackets_compatible": [1, 2, 3, 4]
+    },
+    {
+      "id": "aristocrats",
+      "name": "Aristocrats / Sacrifice",
+      "category": "Synergy & Drain",
+      "description": "Busca valor sacrificando criaturas propias para activar habilidades y causar daño constante o drenar vida a los oponentes mediante efectos al morir (Death triggers).",
+      "key_elements": [
+        "Sacrifice outlets (Viscera Seer, Ashnod's Altar)",
+        "Payoffs / Drainers (Blood Artist, Zulaport Cutthroat)",
+        "Fodder generators (Reassembling Skeleton, Bitterblossom)",
+        "Mass reanimation (Living Death)"
+      ],
+      "win_conditions": [
+        "Drenaje de vida por bucle de sacrificios",
+        "Combos infinitos de sacrificio / resurrección",
+        "Daño no de combate acumulativo"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "spellslinger",
+      "name": "Spellslinger",
+      "category": "Instant & Sorcery",
+      "description": "Mazo centrado en castear una gran cantidad de instantáneos y conjuros. Utiliza copia de hechizos, reducción de costes y cartas con disparadores de Magecraft/Storm para ganar.",
+      "key_elements": [
+        "Cost reducers (Baral, Goblin Electromancer)",
+        "Spell copiers (Dualcaster Mage, Thousand-Year Storm)",
+        "Token generation on cast (Young Pyromancer, Murmuring Mystic)",
+        "Storm & Burn wincons (Aetherflux Reservoir, Grapeshot)"
+      ],
+      "win_conditions": [
+        "Aetherflux Reservoir / Storm count",
+        "Daño masivo directo copiado",
+        "Generación infinita de fichas por disparadores de hechizo"
+      ],
+      "brackets_compatible": [2, 3, 4, 5]
+    },
+    {
+      "id": "voltron",
+      "name": "Voltron / Equipment & Auras",
+      "category": "Aggro / Commander Damage",
+      "description": "Consiste en equipar o encantar al Comandante con auras, equipos y contadores para infligir los 21 puntos de daño de comandante de manera rápida, otorgándole evasión y protección.",
+      "key_elements": [
+        "Equipment & Auras (Sword cycle, Colossus Hammer, Ancestral Mask)",
+        "Protection & Evasion (Swiftfoot Boots, Lightning Greaves, Shadowspear)",
+        "Free equip / tutor engines (Puresteel Paladin, Stoneforge Mystic)",
+        "Double strike & extra combat steps"
+      ],
+      "win_conditions": [
+        "Eliminación de jugadores uno a uno con 21 de daño de Comandante",
+        "Ataques inbloqueables e indestructibles"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    },
+    {
+      "id": "superfriends",
+      "name": "Superfriends / Planeswalkers",
+      "category": "Control",
+      "description": "Estrategia basada en acumular múltiples Planeswalkers en mesa. Utiliza la mecánica de Proliferate y filtros defensivos para mantener a los caminantes con vida hasta activar sus habilidades máximas (Ultimates).",
+      "key_elements": [
+        "Planeswalkers de alto impacto",
+        "Proliferate engine (Inexorable Tide, Evolution Sage)",
+        "Board wipes asimétricos y Pillowfort",
+        "Doubling Season / Deepglow Skate"
+      ],
+      "win_conditions": [
+        "Disparo inmediato de 'Ultimates' de Planeswalkers",
+        "Control absoluto del estado de mesa"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "enchantress",
+      "name": "Enchantress / Auras & Sagas",
+      "category": "Synergy & Control",
+      "description": "Gira en torno al uso masivo de encantamientos. Utiliza efectos tipo 'Enchantress' para robar cartas cada vez que se juega un encantamiento y controlar la mesa con bloqueos pasivos.",
+      "key_elements": [
+        "Enchantress draw engines (Argothian Enchantress, Sythis)",
+        "Pillowfort (Ghostly Prison, Propaganda, Sphere of Safety)",
+        "Auras, Constellation & Sagas",
+        "Starfield of Nyx / Opalescence"
+      ],
+      "win_conditions": [
+        "Animación masiva de encantamientos en criaturas",
+        "Bloqueo total de ataques enemigos y victoria por desgaste",
+        "Combos de maná infinito con tierras encantadas"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "cedh_fast_combo",
+      "name": "Turbo Combo / cEDH Wincon",
+      "category": "Competitive",
+      "description": "Diseñado para la máxima eficiencia y velocidad. Busca ensamblar combos de 2 cartas lo más rápido posible (turnos 1 a 3), utilizando fast mana, interacción gratis y tutores óptimos.",
+      "key_elements": [
+        "Fast mana (Mox Diamond, Chrome Mox, Lotus Petal)",
+        "Efficient 2-card combos (Thassa's Oracle + Consultation / Breach lines)",
+        "Free counterspells (Force of Will, Fierce Guardianship, Pact of Negation)",
+        "Top-tier tutors (Vampiric, Demonic, Mystical)"
+      ],
+      "win_conditions": [
+        "Thassa's Oracle / Demonic Consultation",
+        "Underworld Breach + Brain Freeze + LED",
+        "Combos infinitos de maná y robo del mazo entero"
+      ],
+      "brackets_compatible": [4, 5]
+    },
+    {
+      "id": "group_hug",
+      "name": "Group Hug / Resource Acceleration",
+      "category": "Alternative / Politics",
+      "description": "Acelera los recursos de todos los jugadores en la mesa (robo de cartas, maná extra) para evitar ser atacado tempranamente, manipulando la política de la partida antes de cerrar el juego repentinamente.",
+      "key_elements": [
+        "Symmetrical card draw (Howling Mine, Temple Bell)",
+        "Mana doublers for table (Heartbeat of Spring, Dictate of Karametra)",
+        "No-aggro incentives (Propaganda, Glacial Chasm)",
+        "Sudden wincons (Approach of the Second Sun, Forced Fruition)"
+      ],
+      "win_conditions": [
+        "Approach of the Second Sun",
+        "Vaciado de mazo de oponentes por robo masivo forced (Mill/Draw out)",
+        "Redirección de daño masivo"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    },
+    {
+      "id": "reanimator",
+      "name": "Reanimator / Graveyard Value",
+      "category": "Graveyard & Cheat",
+      "description": "Consiste en enviar criaturas gigantescas o amenazas devastadoras al cementerio rápidamente para luego devolverlas al campo de batalla por una fracción de su coste original de maná.",
+      "key_elements": [
+        "Entomb & self-mill (Entomb, Buried Alive, Stitcher's Supplier)",
+        "Cheap reanimation spells (Reanimate, Animate Dead, Archon of Cruelty)",
+        "High-impact targets (Razaketh, Archon of Cruelty, Villains)",
+        "Graveyard protection & recursion"
+      ],
+      "win_conditions": [
+        "Despliegue de amenazas letales en turno 1-3",
+        "Bucle infinito de resurrección de criaturas"
+      ],
+      "brackets_compatible": [2, 3, 4, 5]
+    },
+    {
+      "id": "tokens_swarm",
+      "name": "Go Wide / Token Swarm",
+      "category": "Aggro / Synergy",
+      "description": "Genera docenas de fichas de criatura pequeñas para abrumar las defensas del oponente. Utiliza multiplicadores de fichas e himnos globales para transformar un ejército pequeño en un ataque letal.",
+      "key_elements": [
+        "Token multipliers (Parallel Lives, Doubling Season, Anointed Procession)",
+        "Mass token generators (Avenger of Zendikar, Secure the Wastes)",
+        "Overrun effects (Craterhoof Behemoth, Triumph of the Hordes)",
+        "Impact Tremors / Purphoros triggers"
+      ],
+      "win_conditions": [
+        "Craterhoof Behemoth / Triumph of the Hordes",
+        "Daño por entrada en mesa (Purphoros, God of the Forge)",
+        "Ataque en masa sobrepasando bloqueadores"
+      ],
+      "brackets_compatible": [1, 2, 3, 4]
+    },
+    {
+      "id": "wheels_discard",
+      "name": "Wheels & Punish",
+      "category": "Synergy & Control",
+      "description": "Fuerza a todos los jugadores a descartar su mano y robar nuevas cartas continuamente mediante efectos 'Wheel'. Combina esto con cartas que castigan el descarte y el robo enemigo.",
+      "key_elements": [
+        "Wheel effects (Wheel of Fortune, Windfall, Reforge the Soul)",
+        "Punishers (Nekusar, Sheoldred the Apocalypse, Megrim, Orcish Bowmasters)",
+        "Hand locks (Narset, Parter of Veils, Notion Thief)",
+        "Graveyard payoff for discarded cards"
+      ],
+      "win_conditions": [
+        "Daño masivo acumulado por robo y descarte forzado",
+        "Dejar a los oponentes sin mano mediante Narset/Notion Thief + Wheel"
+      ],
+      "brackets_compatible": [3, 4, 5]
+    },
+    {
+      "id": "blink_flicker",
+      "name": "Blink / Enter the Battlefield (ETB)",
+      "category": "Synergy & Value",
+      "description": "Exilia temporalmente y regresa permanente al campo de batalla a sus criaturas para disparar repetidamente habilidades de 'entrada al campo de batalla' (ETB) y esquivar la remoción enemiga.",
+      "key_elements": [
+        "Blink enablers (Teleportation Circle, Soulherder, Brago, Thassa)",
+        "Instant blink (Ephemerate, Ghostly Flicker)",
+        "ETB Payoffs (Mulldrifter, Peregrine Drake, Solitude)",
+        "Panharmonicon / Elesh Norn, Mother of Machines"
+      ],
+      "win_conditions": [
+        "Maná infinito con Peregrine Drake / Deadeye Navigator",
+        "Agotamiento de recursos enemigos mediante ETBs de remoción/robo",
+        "Bloqueo y ventaja de valor permanente"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "stax_hatebears",
+      "name": "Stax / Hatebears",
+      "category": "Resource Control",
+      "description": "Llena la mesa con criaturas pequeñas con habilidades pasivas que imponen impuestos y reglas restrictivas (Hatebears), impidiendo que los oponentes ejecuten sus planes de juego o combos.",
+      "key_elements": [
+        "Hatebears (Thalia, Collector Ouphe, Drannith Magistrate, Aven Mindcensor)",
+        "Taxing artifacts (Thorn of Amethyst, Trinisphere)",
+        "Rule-setting permanents (Rule of Law, Archon of Emeria)",
+        "Asymmetric asymmetry enablers"
+      ],
+      "win_conditions": [
+        "Bloqueo total de combos y victoria por daño de combate de criaturas pequeñas",
+        "Rendición de los oponentes por imposibilidad de jugar hechizos"
+      ],
+      "brackets_compatible": [3, 4, 5]
+    },
+    {
+      "id": "infect_toxic",
+      "name": "Infect / Toxic / Poison",
+      "category": "Aggro / Alternative Wincon",
+      "description": "Aprovecha la mecánica de contadores de veneno (donde solo se necesitan 10 contadores para eliminar a un jugador en lugar de 40 de vida). Utiliza criaturas con Infect/Toxic y efectos de Proliferate.",
+      "key_elements": [
+        "Infect & Toxic creatures (Blightsteel Colossus, Skithiryx, Venerated Rotpriest)",
+        "Proliferate engine (Infectious Inquiry, Contagion Engine)",
+        "Evasion & Unblockable spells",
+        "Pump spells & Haste"
+      ],
+      "win_conditions": [
+        "10 contadores de veneno por daño de combate o proliferación",
+        "Blightsteel Colossus de un solo golpe"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "artifacts_matter",
+      "name": "Artifacts Matter / Affinity & Eggs",
+      "category": "Synergy & Combo",
+      "description": "Gira alrededor del uso y sacrificio de artefactos. Genera maná, reduce costes de hechizos y crea bucles infinitos con artefactos baratos (Eggs) y criaturas de artefacto.",
+      "key_elements": [
+        "Cost reducers (Etherium Sculptor, Jhoira, Foundry Inspector)",
+        "Artifact recursion (Goblin Welder, Scrap Trawler, Sharuum)",
+        "Affinity & Construct tokens (Urza, Lord High Artificer, Karn)",
+        "Combos con Sensei's Divining Top + Bolas's Citadel"
+      ],
+      "win_conditions": [
+        "Aetherflux Reservoir / Marionette Master",
+        "Fichas de Constructo gigantescas por número de artefactos",
+        "Combos infinitos de artefactos con Basalt/Grim Monolith"
+      ],
+      "brackets_compatible": [2, 3, 4, 5]
+    },
+    {
+      "id": "pillowfort_politics",
+      "name": "Pillowfort / Political Control",
+      "category": "Control / Politics",
+      "description": "Crea una fortaleza defensiva impenetrable alrededor del jugador haciendo que sea demasiado costoso o imposible atacarle, redirigiendo el agredimiento hacia los demás oponentes.",
+      "key_elements": [
+        "Attack disincentives (Propaganda, Ghostly Prison, Norn's Annex)",
+        "Damage prevention & Solitary Confinement",
+        "Goad mechanics (Bother, Disrupt Decorum, Karazikar)",
+        "Monarchy & Initiative mechanics"
+      ],
+      "win_conditions": [
+        "Forzar a los oponentes a matarse entre ellos mediante Goad",
+        "Cierre con combos o vincons alternativas en el 1v1 final"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    },
+    {
+      "id": "mill_selfmill",
+      "name": "Mill / Graveyard Depletion",
+      "category": "Alternative Wincon",
+      "description": "Busca vaciar la biblioteca de los oponentes enviando sus cartas directamente al cementerio, o vaciar la propia biblioteca para activar condiciones de victoria instantánea.",
+      "key_elements": [
+        "Mass mill engines (Maddening Cacophony, Bruvac the Grandiloquent, Ruin Crab)",
+        "Self-mill spells & Hermit Druid",
+        "Laboratory Maniac / Jace, Wielder of Mysteries / Thassa's Oracle",
+        "Exile from graveyard to prevent recursion"
+      ],
+      "win_conditions": [
+        "Vaciado completo del mazo enemigo",
+        "Self-mill seguido de Thassa's Oracle / Laboratory Maniac"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "spite_chaos",
+      "name": "Chaos / Randomness",
+      "category": "Unconventional / Fun",
+      "description": "Introduce efectos aleatorios, intercambio de permanentes y cambio de reglas globales que alteran por completo la lógica normal del juego, creando partidas impredecibles.",
+      "key_elements": [
+        "Coin flips & Dice rolling (Krark, the Thumbless, Okaun)",
+        "Spell redirection & Random targets (Warp World, Possibility Storm)",
+        "Permanent swapping (Thieves' Auction, Scrambleverse)",
+        "Chaos value engines"
+      ],
+      "win_conditions": [
+        "Combos de lanzamientos de moneda (Okaun / Chance Encounter)",
+        "Ventaja por adaptación al caos mientras los demás pierden el control"
+      ],
+      "brackets_compatible": [1, 2]
+    },
+    {
+      "id": "energy_counters",
+      "name": "Energy Counters / Resource Accumulation",
+      "category": "Synergy & Unconventional",
+      "description": "Estrategia temática basada en acumular contadores de Energía (`{E}`) como un tipo de recurso alternativo para activar habilidades destructivas, robar cartas o invocar amenazas.",
+      "key_elements": [
+        "Energy generators (Aetherworks Marvel, Gonti's Aether Heart)",
+        "Payoffs (Aetherwind Basker, Demon of Dark Schemes)",
+        "Proliferate synergizers",
+        "Kaladesh & Fallout energy staples"
+      ],
+      "win_conditions": [
+        "Casteo gratuito de cartas masivas con Aetherworks Marvel",
+        "Turnos extra continuos con Gonti's Aether Heart"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    },
+    {
+      "id": "mutatable_counters",
+      "name": "+1/+1 Counters / Proliferate",
+      "category": "Synergy & Aggro",
+      "description": "Se basa en colocar y multiplicar masivamente contadores +1/+1 sobre las criaturas del mazo, convirtiendo pequeños permanentes en verdaderos monstruos en pocos turnos.",
+      "key_elements": [
+        "Counter multipliers (Hardened Scales, Doubling Season, Vorinclex)",
+        "Proliferate engine (Evolution Sage, Karn's Bastion)",
+        "Counter payoffs (Forgotten Ancient, Kalonian Hydra, Simic Ascendancy)",
+        "Evasion & Triskelion / Walking Ballista pings"
+      ],
+      "win_conditions": [
+        "Simic Ascendancy (20+ contadores)",
+        "Walking Ballista con contadores infinitos",
+        "Ataque masivo con criaturas gigantescas con arrollar"
+      ],
+      "brackets_compatible": [1, 2, 3, 4]
+    },
+    {
+      "id": "cascade_discover",
+      "name": "Cascade / Discover Chaos",
+      "category": "Synergy & Value",
+      "description": "Aprovecha las mecánicas de Cascade y Discover para lanzar hechizos gratuitos consecutivamente desde la parte superior de la biblioteca, generando turnos explosivos de enorme valor de maná.",
+      "key_elements": [
+        "Cascade commanders & spells (Maelstrom Wanderer, Yidris, Averna, Apex Devastator)",
+        "Discover enablers (Pantlaza, Sun-Favored)",
+        "Top-deck manipulation (Brainstorm, Sensei's Divining Top, Scroll Rack)",
+        "Extra combats & Haste enablers"
+      ],
+      "win_conditions": [
+        "Despliegue de 3 a 5 amenazas de alto coste en un solo turno",
+        "Encadenamiento infinito de cascadas"
+      ],
+      "brackets_compatible": [2, 3, 4]
+    },
+    {
+      "id": "dungeon_initiative",
+      "name": "Dungeons & Initiative",
+      "category": "Unconventional / Value",
+      "description": "Mazo temático enfocado en aventurarse en las mazmorras (Venturing into the Dungeon) y tomar/mantener la Iniciativa para obtener ventajas de cartas, fichas, tesoros y vida turno tras turno.",
+      "key_elements": [
+        "Initiative enablers (White Plume Adventurer, Seasoned Dungeoneer)",
+        "Dungeon runners (Sefris of the Hidden Ways, Hama Pashar)",
+        "Blink / Flicker support to repeat dungeon rooms",
+        "Tomb of Annihilation / Undercity payoffs"
+      ],
+      "win_conditions": [
+        "Completar mazmorras repetidamente en bucles de Flicker",
+        "Drenaje de vida constante y generación de tesoros masiva"
+      ],
+      "brackets_compatible": [1, 2, 3]
+    }
+  ]
+}

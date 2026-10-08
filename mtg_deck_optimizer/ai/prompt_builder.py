@@ -31,7 +31,8 @@ You must strictly obey the following rules:
 4. COMMUNITY DATA: Prioritize high-synergy inclusions with positive community win rates from EDHREC data.
 5. ANTI-SYNERGY TRAP FILTER: Strictly prioritize mana efficiency over pure thematic resonance. Avoid suggesting spells with CMC > 4 unless they are direct game-ending win conditions or indispensable engine cornerstones. Reject slow, win-more cards.
 6. CARD-BY-CARD TRADE-OFF JUSTIFICATION: Every suggested change must explicitly justify the cause-and-effect transition: [Card Cut (CMC)] vs [Card In (CMC)] detailing the exact curve reduction and technical acceleration.
-7. STRICT JSON OUTPUT: Return ONLY a valid, single JSON object adhering exactly to the requested JSON schema. No surrounding conversational markdown or backticks outside the JSON.
+7. STRATEGY SYNERGY ALIGNMENT: Rigorously evaluate and optimize every card inclusion and cut based on its alignment with the key elements, gameplay description, and win conditions of the chosen strategy/archetype.
+8. STRICT JSON OUTPUT: Return ONLY a valid, single JSON object adhering exactly to the requested JSON schema. No surrounding conversational markdown or backticks outside the JSON.
 """
 
     @classmethod
@@ -97,6 +98,29 @@ You must strictly obey the following rules:
             color_identity=deck.color_identity,
             limit=6,
         )
+
+        # 5b. Format Strategy Theoretical Guide
+        strat = getattr(intent, "strategy_profile", None) or {}
+        strat_name = getattr(intent, "strategy_name", None) or strat.get("name", "")
+        if strat or strat_name:
+            strat_desc = strat.get("description", "Not specified")
+            key_elems = strat.get("key_elements", [])
+            key_elems_str = "\n".join(f"  * {el}" for el in key_elems) if key_elems else "  * Dynamic archetype synergies"
+            win_cons = strat.get("win_conditions", [])
+            win_cons_str = "\n".join(f"  * {wc}" for wc in win_cons) if win_cons else "  * General Commander combat or combo win conditions"
+            
+            strategy_block = f"""
+=== SELECTED STRATEGY & THEORETICAL GUIDE ===
+- Archetype Name: {strat_name}
+- Category: {strat.get('category', 'Commander Archetype')}
+- Description: {strat_desc}
+- Key Strategic Elements (Must Support):
+{key_elems_str}
+- Primary Win Conditions (Target Game Plan):
+{win_cons_str}
+"""
+        else:
+            strategy_block = ""
 
         # 6. Schema representation
         json_schema_example = json.dumps(
@@ -164,7 +188,7 @@ You must strictly obey the following rules:
 - UNTOUCHABLE CARDS (DO NOT CUT): {untouchables_str}
 - Allow Infinite Combos: {intent.effective_allow_combos}
 - Allow Fast Mana: {intent.effective_allow_fast_mana}
-
+{strategy_block}
 === GAP ANALYSIS METRICS ===
 - Current Avg CMC (non-land): {gap_report.cmc_detail.current_value:.2f} (Target: {gap_report.cmc_detail.target_benchmark_range}) -> {gap_report.cmc_detail.status}
 - Lands Count: {int(gap_report.lands_detail.current_value)} (Target: {gap_report.lands_detail.target_benchmark_range}) -> {gap_report.lands_detail.status}
@@ -191,7 +215,7 @@ Known Wincon Combos:
 {current_deck_str}
 
 === REQUIRED OUTPUT ===
-Generate a comprehensive, mathematically rigorous optimization plan. Provide balanced 1-for-1 swaps (Cuts and Inclusions) that maintain the 100-card Commander legal deck limit, optimize the mana curve and color fixing, and respect all untouchable cards and budget constraints.
+Generate a comprehensive, mathematically rigorous optimization plan aligned with the selected strategy. Provide balanced 1-for-1 swaps (Cuts and Inclusions) that maintain the 100-card Commander legal deck limit, optimize the mana curve and color fixing, and respect all untouchable cards, strategy guidelines, and budget constraints.
 
 Format your output strictly as a valid JSON object following this exact schema:
 {json_schema_example}

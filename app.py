@@ -16,6 +16,11 @@ from mtg_deck_optimizer.rules.wotc_rules_engine import WOTC_Commander_Rules_Engi
 from mtg_deck_optimizer.deckbuilder.generator import MTGDeckbuilderGenerator
 from mtg_deck_optimizer.deckbuilder.models import DeckbuilderParams
 from mtg_deck_optimizer.deckbuilder.archetype_database import ARCHETYPE_DEFINITIONS
+from mtg_deck_optimizer.deckbuilder.strategy_service import (
+    get_strategies_by_bracket,
+    resolve_dynamic_strategy,
+    get_strategy_service,
+)
 from mtg_deck_optimizer.exporter.deck_exporter import DeckExporter
 from mtg_deck_optimizer.intent import build_user_intent
 from mtg_deck_optimizer.brackets.standards import (
@@ -309,8 +314,52 @@ if "Optimizar Mazo" in app_mode:
             unsafe_allow_html=True,
         )
 
-        all_archetype_names = list(ARCHETYPE_DEFINITIONS.keys())
-        selected_archetype = st.selectbox("Estrategia / Arquetipo Objetivo:", all_archetype_names, index=0)
+        # Dynamically retrieve strategies compatible with the chosen bracket
+        bracket_strategies = get_strategies_by_bracket(opt_bracket_num)
+        if not bracket_strategies:
+            service = get_strategy_service()
+            bracket_strategies = service.get_all_strategies()
+
+        # Detect active commander for dynamic tribal resolution
+        active_cmdr_preview = cmdr_input.strip() if cmdr_input.strip() else None
+        if not active_cmdr_preview and deck_text_input.strip():
+            for line in deck_text_input.strip().splitlines():
+                clean_l = ingestion_service.scryfall.clean_card_name(line)
+                if clean_l and not clean_l.startswith("//") and not clean_l.startswith("#"):
+                    active_cmdr_preview = clean_l
+                    break
+
+        # Build list of options with dynamic name and subtype resolution
+        strategy_display_map = {}
+        strategy_options = []
+        for s in bracket_strategies:
+            resolved_s = resolve_dynamic_strategy(s, active_cmdr_preview)
+            strat_label = f"{resolved_s['name']} ({resolved_s.get('category', 'General')})"
+            strategy_display_map[strat_label] = resolved_s
+            strategy_options.append(strat_label)
+
+        selected_strat_label = st.selectbox(
+            f"🎯 Estrategia / Arquetipo Objetivo (Filtrado para Bracket {opt_bracket_num}):",
+            options=strategy_options if strategy_options else ["General Commander Synergy"],
+            index=0,
+        )
+        selected_strategy = strategy_display_map.get(selected_strat_label, {})
+        st.session_state.selected_strategy = selected_strategy
+
+        # Strategy Preview Card
+        if selected_strategy:
+            strat_elements = selected_strategy.get("key_elements", [])
+            strat_elements_str = " · ".join(strat_elements[:3]) if strat_elements else ""
+            st.markdown(
+                f"""
+                <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 14px; margin-top:-6px; margin-bottom:12px; font-size:0.86rem;">
+                    <div style="font-weight:bold; color:#58a6ff; margin-bottom:4px;">📖 Plan de Juego: {selected_strategy.get('name', '')}</div>
+                    <div style="color:#c9d1d9; margin-bottom:6px; line-height:1.35;">{selected_strategy.get('description', '')}</div>
+                    {f'<div style="color:#8b949e;"><strong>⚡ Elementos Clave:</strong> {strat_elements_str}</div>' if strat_elements_str else ''}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         budget_unlimited = st.checkbox("Sin límite de presupuesto", value=True)
         opt_max_budget = None
@@ -711,12 +760,15 @@ if "Optimizar Mazo" in app_mode:
     st.markdown('<div class="step-header">🚀 PASO 3: Optimización con IA & Análisis Avanzado</div>', unsafe_allow_html=True)
     if st.button("🚀 Optimizar Mazo con IA", type="primary", use_container_width=True):
         with st.spinner("Analizando sinergias, balanceando tierras, validando Game Changers y ejecutando WOTC Rules Engine..."):
+            selected_strat = st.session_state.get("selected_strategy", {})
             user_intent = build_user_intent(
                 target_bracket=opt_bracket_num,
                 max_budget_usd=opt_max_budget,
                 untouchable_cards=untouchable_cards,
                 allow_infinite_combos=(opt_bracket_num >= 4),
                 allow_fast_mana=(opt_bracket_num >= 4),
+                strategy_profile=selected_strat,
+                strategy_name=selected_strat.get("name") if selected_strat else None,
             )
 
             from mtg_deck_optimizer.brackets.gap_analyzer import DeckGapAnalyzer

@@ -3,7 +3,7 @@ Interactive CLI Questionnaire and API builders for evaluating user intent and op
 """
 
 import sys
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 from .models import UserIntent
 from ..brackets.standards import BracketTier
@@ -87,18 +87,26 @@ def ask_user_intent_cli(
 
 
 def build_user_intent(
-    target_bracket: int = 2,
+    target_bracket: Union[int, BracketTier] = 2,
     max_budget_usd: Optional[float] = None,
     untouchable_cards: Optional[List[str]] = None,
     allow_infinite_combos: Optional[bool] = None,
     allow_fast_mana: Optional[bool] = None,
+    strategy_profile: Optional[Dict[str, Any]] = None,
+    strategy_name: Optional[str] = None,
 ) -> UserIntent:
     """Helper to programmatically build UserIntent from API endpoints or function calls."""
-    tier = BracketTier(target_bracket) if target_bracket in (1, 2, 3, 4) else BracketTier.BRACKET_2_MID_POWER
+    if isinstance(target_bracket, BracketTier):
+        tier = target_bracket
+    else:
+        tier = BracketTier(target_bracket) if target_bracket in (1, 2, 3, 4, 5) else BracketTier.BRACKET_2_MID_POWER
+
     return UserIntent(
         target_bracket=tier,
         max_budget_usd=max_budget_usd,
         untouchable_cards=untouchable_cards or [],
         allow_infinite_combos=allow_infinite_combos,
         allow_fast_mana=allow_fast_mana,
+        strategy_profile=strategy_profile,
+        strategy_name=strategy_name or (strategy_profile.get("name") if strategy_profile else None),
     )
