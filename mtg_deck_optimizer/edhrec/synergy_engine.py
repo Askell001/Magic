@@ -490,14 +490,9 @@ class EDHREC_Synergy_Engine:
                     card_item.type_line = type_line
                 if card_item.price_usd is None or card_item.price_usd == 0.0:
                     card_item.price_usd = price
+                card_item.image_url = scryfall.STATIC_STAPLE_IMAGES.get(name_lower)
             else:
                 card_obj = scryfall._cache_by_name.get(name_lower) or scryfall._find_in_cache(name_clean, None, None)
-                if not card_obj:
-                    try:
-                        card_obj = scryfall.get_card_by_name(name_clean)
-                    except Exception:
-                        pass
-
                 if card_obj:
                     card_ci = set(ColorIdentityExtractor.compute_card_color_identity(card_obj))
                     card_item.is_color_legal = card_ci.issubset(cmdr_ci_set)
@@ -507,12 +502,12 @@ class EDHREC_Synergy_Engine:
                         card_item.type_line = card_obj.type_line
                     if (card_item.price_usd is None or card_item.price_usd == 0.0) and card_obj.prices and card_obj.prices.usd:
                         card_item.price_usd = card_obj.prices.usd
+                    if card_obj.image_uris and card_obj.image_uris.normal and "back.jpg" not in card_obj.image_uris.normal:
+                        card_item.image_url = card_obj.image_uris.normal
                 else:
-                    # If card couldn't be resolved, check basic heuristics or default to True only if no obvious off-color
+                    # In-memory heuristic for fast filtering
                     card_item.is_color_legal = True
-
-            # Ensure image_url is always populated with direct verified CDN URL
-            card_item.image_url = scryfall.get_card_image_url(name_clean)
+                    card_item.image_url = scryfall.STATIC_STAPLE_IMAGES.get(name_lower)
 
             # 3. Game Changer Check
             if name_lower in gc_lookup:

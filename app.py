@@ -655,82 +655,170 @@ if "Optimizar Mazo" in app_mode:
     ])
 
     with tab_gallery:
-        st.markdown("### 🎴 Galería Visual de Cartas en el Mazo")
+        st.markdown("### 🎴 Galería y Visor de Cartas del Mazo")
         all_deck_items = deck.commanders + deck.maindeck
         
-        # Grid layout with 5 columns per row
-        for row_start in range(0, len(all_deck_items), 5):
-            row_chunk = all_deck_items[row_start:row_start + 5]
-            cols = st.columns(5)
-            for c_i, item in enumerate(row_chunk):
-                with cols[c_i]:
-                    img_url = get_card_image_url(item)
-                    st.image(img_url, use_container_width=True)
-                    st.markdown(f"**{item.quantity}x {item.effective_name}**")
-                    if item.card:
-                        cmc_label = f"{item.card.cmc:.0f} CMC" if "Land" not in item.card.type_line else "Tierra"
-                        price_label = f"${item.total_price_usd:.2f}" if item.total_price_usd else ""
-                        st.caption(f"{cmc_label} | {price_label}")
+        gal_col_list, gal_col_view = st.columns([3, 2])
+        with gal_col_list:
+            st.markdown("#### 📋 Listado de Cartas")
+            card_names_list = [f"{item.quantity}x {item.effective_name}" for item in all_deck_items]
+            selected_deck_idx = st.selectbox(
+                "🔎 Selecciona una carta para previsualizar su arte:",
+                range(len(all_deck_items)),
+                format_func=lambda idx: card_names_list[idx],
+                key="deck_gallery_card_selector",
+            )
+            
+            # Categorized breakdown
+            sections_map = {}
+            for item in all_deck_items:
+                t_label = "Tierras" if (item.card and "Land" in item.card.type_line) else (
+                    "Comandante" if item.section == DeckSection.COMMANDER else (
+                        item.card.primary_type if (item.card and item.card.primary_type) else "Hechizos"
+                    )
+                )
+                sections_map.setdefault(t_label, []).append(item)
+
+            for sec_name, sec_items in sections_map.items():
+                with st.expander(f"📁 {sec_name} ({len(sec_items)} cartas)", expanded=False):
+                    for sit in sec_items:
+                        cmc_t = f"({sit.card.cmc:.0f} CMC)" if sit.card and "Land" not in sit.card.type_line else ""
+                        st.markdown(f"- **{sit.quantity}x {sit.effective_name}** {cmc_t}")
+
+        with gal_col_view:
+            if all_deck_items:
+                sel_item = all_deck_items[selected_deck_idx]
+                st.markdown(f"#### 🖼️ {sel_item.effective_name}")
+                sel_img = get_card_image_url(sel_item)
+                st.image(sel_img, use_container_width=True)
+                if sel_item.card:
+                    c_info = sel_item.card
+                    st.caption(f"**Tipo:** {c_info.type_line} | **CMC:** {c_info.cmc:.0f} | **Precio:** ${c_info.price_usd or 0.0:.2f} USD")
 
     with tab_edhrec:
         st.markdown(f"### 🌐 Sugerencias de la Comunidad (EDHREC Sync) para {deck.commander_name or 'tu Comandante'}")
-        st.caption("Extracción en tiempo real desde la base comunitaria de EDHREC, almacenada en MongoDB Atlas con filtro obligatorio de Color Identity, Banlist y límites de Bracket.")
+        st.caption("Extracción comunitaria filtrada con validación de Identidad de Color (CR 903.4), Banlist oficial y estándares de Bracket.")
 
         if not deck.commander_name:
             st.info("Ingresa o selecciona un Comandante en el Paso 1 para ver las sugerencias de la comunidad de EDHREC.")
         else:
-            with st.spinner("Consultando datos comunitarios y sincronizando con MongoDB Atlas..."):
+            with st.spinner("Consultando recomendaciones de la comunidad en tiempo real..."):
                 edh_engine = get_edhrec_engine()
                 raw_edhrec = edh_engine.fetch_edhrec_data(deck.commander_name)
                 edhrec_syn = edh_engine.filter_by_wotc_rules(raw_edhrec, deck.color_identity, opt_bracket_num)
 
-            # Metadata header
-            m1, m2, m3, m4 = st.columns(4)
+            # Metadata header (clean, without database internal mentions)
+            m1, m2, m3 = st.columns(3)
             m1.metric("📊 Mazos Analizados", f"{edhrec_syn.total_decks:,}")
             m2.metric("🏷️ Tema / Arquetipo", edhrec_syn.archetype_theme)
             m3.metric("🎯 Bracket Seleccionado", f"Bracket {opt_bracket_num}")
-            cache_label = "💾 MongoDB Cache" if edhrec_syn.from_cache else "🌐 En Vivo (EDHREC)"
-            m4.metric("🔄 Origen de Datos", cache_label)
 
             st.divider()
 
-            # 1. New Releases / Novedades de Sets Recientes
-            if edhrec_syn.new_cards:
-                st.markdown("#### 🚀 Novedades de Sets Recientes (New Releases)")
-                st.caption("Cartas recién lanzadas compatibles con tu comandante y filtradas por reglas WotC:")
-                n_cols = st.columns(min(len(edhrec_syn.new_cards[:6]), 6))
-                for idx, c in enumerate(edhrec_syn.new_cards[:6]):
-                    with n_cols[idx % len(n_cols)]:
-                        card_img = c.image_url or get_card_image_url(c.name)
-                        st.image(card_img, use_container_width=True)
-                        st.markdown(f"**{c.name}**")
-                        syn_badge = f"+{c.synergy:.0f}%" if c.synergy > 0 else f"{c.synergy:.0f}%"
-                        st.caption(f"Sinergia: `{syn_badge}` | {c.cmc:.0f} CMC")
+            edh_sub1, edh_sub2, edh_sub3 = st.tabs([
+                "⚡ Sinergia Máxima (High Synergy)",
+                "👑 Staples del Comandante (Top Cards)",
+                "🚀 Novedades de Sets (New Releases)",
+            ])
 
-            # 2. High Synergy / Sinergia Máxima
-            if edhrec_syn.high_synergy_cards:
-                st.markdown("#### ⚡ Cartas de Sinergia Máxima (High Synergy)")
-                st.caption("Cartas con la mayor tasa de sinergia única con este comandante:")
-                s_cols = st.columns(min(len(edhrec_syn.high_synergy_cards[:6]), 6))
-                for idx, c in enumerate(edhrec_syn.high_synergy_cards[:6]):
-                    with s_cols[idx % len(s_cols)]:
-                        card_img = c.image_url or get_card_image_url(c.name)
-                        st.image(card_img, use_container_width=True)
-                        st.markdown(f"**{c.name}**")
-                        st.caption(f"Sinergia: `+{c.synergy:.0f}%` | Inclusión: `{c.inclusion_percent:.0f}%`")
+            # Sub-Tab 1: High Synergy
+            with edh_sub1:
+                if not edhrec_syn.high_synergy_cards:
+                    st.info("No se encontraron cartas adicionales de sinergia para esta combinación de colores.")
+                else:
+                    col_t1, col_v1 = st.columns([3, 2])
+                    with col_t1:
+                        st.markdown("##### 📜 Cartas con Mayor Tasa de Sinergia Única")
+                        syn_names = [f"{c.name} (+{c.synergy:.0f}% Sinergia, {c.cmc:.0f} CMC)" for c in edhrec_syn.high_synergy_cards]
+                        sel_syn_idx = st.selectbox(
+                            "🔎 Selecciona una carta para ver su arte oficial:",
+                            range(len(edhrec_syn.high_synergy_cards)),
+                            format_func=lambda i: syn_names[i],
+                            key="edhrec_syn_selector",
+                        )
+                        syn_table = []
+                        for c in edhrec_syn.high_synergy_cards[:12]:
+                            syn_table.append({
+                                "Carta": c.name,
+                                "Sinergia": f"+{c.synergy:.0f}%",
+                                "Inclusión": f"{c.inclusion_percent:.0f}%",
+                                "CMC": f"{c.cmc:.0f}",
+                                "Tipo": c.type_line,
+                            })
+                        st.dataframe(pd.DataFrame(syn_table), use_container_width=True, hide_index=True)
 
-            # 3. Top Cards / Staples del Comandante
-            if edhrec_syn.top_cards:
-                st.markdown("#### 👑 Soportes / Staples del Comandante (Top Cards)")
-                st.caption("Las cartas más populares y consistentes jugadas en este arquetipo:")
-                t_cols = st.columns(min(len(edhrec_syn.top_cards[:6]), 6))
-                for idx, c in enumerate(edhrec_syn.top_cards[:6]):
-                    with t_cols[idx % len(t_cols)]:
-                        card_img = c.image_url or get_card_image_url(c.name)
-                        st.image(card_img, use_container_width=True)
-                        st.markdown(f"**{c.name}**")
-                        p_str = f"${c.price_usd:.2f}" if c.price_usd else ""
-                        st.caption(f"Inclusión: `{c.inclusion_percent:.0f}%` {(' | ' + p_str) if p_str else ''}")
+                    with col_v1:
+                        sel_c = edhrec_syn.high_synergy_cards[sel_syn_idx]
+                        st.markdown(f"##### 🖼️ {sel_c.name}")
+                        st.image(get_card_image_url(sel_c.name), use_container_width=True)
+                        st.caption(f"**Sinergia:** `+{sel_c.synergy:.0f}%` | **Inclusión:** `{sel_c.inclusion_percent:.0f}%` | **CMC:** {sel_c.cmc:.0f}")
+
+            # Sub-Tab 2: Top Staples
+            with edh_sub2:
+                if not edhrec_syn.top_cards:
+                    st.info("No se encontraron cartas de soporte para este arquetipo.")
+                else:
+                    col_t2, col_v2 = st.columns([3, 2])
+                    with col_t2:
+                        st.markdown("##### 📜 Cartas Más Populares y Consistentes")
+                        top_names = [f"{c.name} ({c.inclusion_percent:.0f}% Inclusión, {c.cmc:.0f} CMC)" for c in edhrec_syn.top_cards]
+                        sel_top_idx = st.selectbox(
+                            "🔎 Selecciona una carta para ver su arte oficial:",
+                            range(len(edhrec_syn.top_cards)),
+                            format_func=lambda i: top_names[i],
+                            key="edhrec_top_selector",
+                        )
+                        top_table = []
+                        for c in edhrec_syn.top_cards[:12]:
+                            p_str = f"${c.price_usd:.2f}" if c.price_usd else "-"
+                            top_table.append({
+                                "Carta": c.name,
+                                "Inclusión": f"{c.inclusion_percent:.0f}%",
+                                "CMC": f"{c.cmc:.0f}",
+                                "Tipo": c.type_line,
+                                "Precio": p_str,
+                            })
+                        st.dataframe(pd.DataFrame(top_table), use_container_width=True, hide_index=True)
+
+                    with col_v2:
+                        sel_t = edhrec_syn.top_cards[sel_top_idx]
+                        st.markdown(f"##### 🖼️ {sel_t.name}")
+                        st.image(get_card_image_url(sel_t.name), use_container_width=True)
+                        p_t = f"${sel_t.price_usd:.2f} USD" if sel_t.price_usd else "N/A"
+                        st.caption(f"**Inclusión:** `{sel_t.inclusion_percent:.0f}%` | **CMC:** {sel_t.cmc:.0f} | **Precio:** {p_t}")
+
+            # Sub-Tab 3: New Releases
+            with edh_sub3:
+                if not edhrec_syn.new_cards:
+                    st.info("No se registraron novedades recientes de sets nuevos para este comandante.")
+                else:
+                    col_t3, col_v3 = st.columns([3, 2])
+                    with col_t3:
+                        st.markdown("##### 📜 Novedades de Sets Recientes Compatibles")
+                        new_names = [f"{c.name} ({c.cmc:.0f} CMC)" for c in edhrec_syn.new_cards]
+                        sel_new_idx = st.selectbox(
+                            "🔎 Selecciona una carta para ver su arte oficial:",
+                            range(len(edhrec_syn.new_cards)),
+                            format_func=lambda i: new_names[i],
+                            key="edhrec_new_selector",
+                        )
+                        new_table = []
+                        for c in edhrec_syn.new_cards[:12]:
+                            syn_b = f"+{c.synergy:.0f}%" if c.synergy > 0 else f"{c.synergy:.0f}%"
+                            new_table.append({
+                                "Carta": c.name,
+                                "Sinergia": syn_b,
+                                "CMC": f"{c.cmc:.0f}",
+                                "Tipo": c.type_line,
+                            })
+                        st.dataframe(pd.DataFrame(new_table), use_container_width=True, hide_index=True)
+
+                    with col_v3:
+                        sel_n = edhrec_syn.new_cards[sel_new_idx]
+                        st.markdown(f"##### 🖼️ {sel_n.name}")
+                        st.image(get_card_image_url(sel_n.name), use_container_width=True)
+                        syn_b = f"+{sel_n.synergy:.0f}%" if sel_n.synergy > 0 else f"{sel_n.synergy:.0f}%"
+                        st.caption(f"**Sinergia:** `{syn_b}` | **CMC:** {sel_n.cmc:.0f} | **Tipo:** {sel_n.type_line}")
 
     with tab_mana_land:
         st.markdown("### 🎨 Densidad de Pips de Color vs Fuentes de Maná")
