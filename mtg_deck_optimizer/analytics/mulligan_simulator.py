@@ -16,12 +16,33 @@ class MulliganSimulationReport(BaseModel):
     """Statistical summary of 1,000 opening hand simulations."""
     total_simulations: int = 1000
     playable_hand_rate_percent: float = Field(description="Percentage of hands with 2-4 lands and at least 1 early play/ramp")
+    turn_2_ramp_rate_percent: float = Field(default=0.0, description="Probability of drawing ramp/acceleration playable by turn 2")
     mana_screw_rate_percent: float = Field(description="Percentage of hands with 0 or 1 land")
     mana_flood_rate_percent: float = Field(description="Percentage of hands with 5 or more lands")
     interaction_turn_1_to_3_percent: float = Field(description="Probability of holding interaction by turn 3")
     avg_commander_cast_turn: float = Field(description="Average turn on which the Commander can be reliably cast")
     sample_opening_hands: List[List[str]] = Field(default_factory=list, description="3 randomized sample hands for inspection")
     mulligan_advice: str = Field(description="Strategic feedback on mana base stability and opening hand safety")
+
+    @property
+    def playable_hands_percentage(self) -> float:
+        return self.playable_hand_rate_percent
+
+    @property
+    def turn_2_ramp_probability(self) -> float:
+        return self.turn_2_ramp_rate_percent
+
+    @property
+    def early_interaction_probability(self) -> float:
+        return self.interaction_turn_1_to_3_percent
+
+    @property
+    def mana_screw_probability(self) -> float:
+        return self.mana_screw_rate_percent
+
+    @property
+    def mana_flood_probability(self) -> float:
+        return self.mana_flood_rate_percent
 
 
 class MulliganSimulator:
@@ -67,6 +88,7 @@ class MulliganSimulator:
         playable_count = 0
         screw_count = 0
         flood_count = 0
+        ramp_turn_2_count = 0
         interaction_by_turn_3_count = 0
         commander_turns_sum = 0.0
 
@@ -88,6 +110,38 @@ class MulliganSimulator:
             has_early_ramp_or_play = any(
                 ("Land" not in (c.type_line or "") and c.cmc <= 2.0) for c in opening_7
             )
+
+            # Check Turn 1-2 Ramp
+            has_turn_2_ramp = any(
+                c.cmc <= 2.0
+                and (
+                    "Artifact" in (c.type_line or "")
+                    or "Creature" in (c.type_line or "")
+                    or "Sorcery" in (c.type_line or "")
+                )
+                and any(
+                    r in c.name.lower()
+                    for r in [
+                        "sol ring",
+                        "signet",
+                        "talisman",
+                        "mox",
+                        "crypt",
+                        "petal",
+                        "dork",
+                        "llanowar",
+                        "elf",
+                        "birds of paradise",
+                        "farseek",
+                        "rampant growth",
+                        "three visits",
+                        "nature's lore",
+                    ]
+                )
+                for c in opening_7
+            )
+            if has_turn_2_ramp and land_count >= 1:
+                ramp_turn_2_count += 1
 
             # Screw & Flood
             if land_count <= 1:
@@ -135,6 +189,7 @@ class MulliganSimulator:
         playable_pct = round((playable_count / num_simulations) * 100.0, 1)
         screw_pct = round((screw_count / num_simulations) * 100.0, 1)
         flood_pct = round((flood_count / num_simulations) * 100.0, 1)
+        ramp_pct = round((ramp_turn_2_count / num_simulations) * 100.0, 1)
         interact_pct = round((interaction_by_turn_3_count / num_simulations) * 100.0, 1)
         avg_cmdr_turn = round(commander_turns_sum / num_simulations, 1)
 
@@ -149,6 +204,7 @@ class MulliganSimulator:
         return MulliganSimulationReport(
             total_simulations=num_simulations,
             playable_hand_rate_percent=playable_pct,
+            turn_2_ramp_rate_percent=ramp_pct,
             mana_screw_rate_percent=screw_pct,
             mana_flood_rate_percent=flood_pct,
             interaction_turn_1_to_3_percent=interact_pct,

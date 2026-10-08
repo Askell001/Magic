@@ -1009,10 +1009,14 @@ if "Optimizar Mazo" in app_mode:
 
         if st.session_state.mulligan_result:
             mull = st.session_state.mulligan_result
-            mc1, mc2, mc3 = st.columns(3)
-            mc1.metric("🃏 Manos Jugables (2-5 Tierras)", f"{mull.playable_hands_percentage:.1f}%")
-            mc2.metric("⚡ Manos con Aceleración Turno 1-2", f"{mull.turn_2_ramp_probability:.1f}%")
-            mc3.metric("🛡️ Manos con Interacción Temprana", f"{mull.early_interaction_probability:.1f}%")
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            mc1.metric("🃏 Manos Jugables (2-4 Tierras)", f"{mull.playable_hands_percentage:.1f}%")
+            mc2.metric("⚡ Aceleración Turno 1-2", f"{mull.turn_2_ramp_probability:.1f}%")
+            mc3.metric("🛡️ Interacción Turnos 1-3", f"{mull.early_interaction_probability:.1f}%")
+            mc4.metric("👑 Turno Comandante", f"T{mull.avg_commander_cast_turn:.1f}")
+
+            if mull.mulligan_advice:
+                st.info(f"💡 **Diagnóstico de Apertura:** {mull.mulligan_advice}")
 
         # ---------------------------------------------------------------------
         # 3. Mana Curve Comparison (Before vs After)
