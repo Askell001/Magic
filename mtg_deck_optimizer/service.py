@@ -36,6 +36,7 @@ class DeckIngestionService:
         custom_commander: Optional[str] = None,
         commander_override: Optional[str] = None,
         auto_detect_commander_if_empty: bool = True,
+        force_refresh: bool = True,
     ) -> Tuple[Deck, DeckAnalysis]:
         """
         Parses raw export text, optionally queries Scryfall for metadata, and generates DeckAnalysis.
@@ -96,7 +97,7 @@ class DeckIngestionService:
             deck.commanders.append(first_item)
 
         if enrich:
-            deck = self.scryfall.enrich_deck(deck)
+            deck = self.scryfall.enrich_deck(deck, force_refresh=force_refresh)
 
         analysis = DeckAnalysis.from_deck(deck)
         return deck, analysis

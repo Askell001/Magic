@@ -31,7 +31,7 @@ class ScryfallClient:
 
     # Direct static CDN fallbacks for staple cards
     STATIC_STAPLE_IMAGES = {
-        "sol ring": "https://cards.scryfall.io/normal/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg",
+        "sol ring": "https://cards.scryfall.io/normal/front/8/e/8ee443cc-e17a-493b-9c93-1f9e141a30e4.jpg?1789644446",
         "arcane signet": "https://cards.scryfall.io/normal/front/2/2/22757544-7709-4b65-94af-bf77694f4c29.jpg",
         "command tower": "https://cards.scryfall.io/normal/front/1/3/13243916-a36c-48be-8f64-4e4b78912e6c.jpg",
         "swords to plowshares": "https://cards.scryfall.io/normal/front/7/c/7c85d402-9988-4f81-a53d-27b91bfad1bb.jpg",
@@ -211,7 +211,7 @@ class ScryfallClient:
 
         img_u = self.STATIC_STAPLE_IMAGES.get(clean_l) or self.STATIC_STAPLE_IMAGES.get(front_l)
         if not img_u:
-            img_u = "https://cards.scryfall.io/normal/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg"
+            img_u = "https://cards.scryfall.io/back.jpg"
 
         card = Card(
             id=f"syn_{clean_l.replace(' ', '_')}",
@@ -231,44 +231,55 @@ class ScryfallClient:
         cache_key = clean_name.lower()
 
         if cache_key in self._cache_by_name and not set_code:
-            return self._cache_by_name[cache_key]
+            cached = self._cache_by_name[cache_key]
+            # If cached card is not synthetic, return it
+            if not cached.id.startswith("syn_") and cached.image_uris and cached.image_uris.normal and "back.jpg" not in cached.image_uris.normal:
+                return cached
 
         # Check front face if DFC
         if " // " in cache_key:
             front = cache_key.split(" // ")[0].strip()
             if front in self._cache_by_name:
-                return self._cache_by_name[front]
+                cached = self._cache_by_name[front]
+                if not cached.id.startswith("syn_") and cached.image_uris and cached.image_uris.normal and "back.jpg" not in cached.image_uris.normal:
+                    return cached
 
         # If cooling down from 429, serve synthetic fallback immediately
         if time.time() < self.rate_limited_until:
             return self._create_synthetic_fallback_card(clean_name)
 
         headers = {"User-Agent": self.USER_AGENT, "Accept": "application/json"}
-
-        # Attempt 1: Exact search
-        self._rate_limit()
-        exact_params = {"set": set_code} if set_code else {}
-        exact_params["exact"] = clean_name
         url_named = f"{self.BASE_URL}/cards/named"
 
         try:
             with httpx.Client(timeout=self.timeout) as client:
-                resp = client.get(url_named, params=exact_params, headers=headers)
+                # Attempt 1: Exact search with set code if given
+                if set_code:
+                    self._rate_limit()
+                    resp = client.get(url_named, params={"exact": clean_name, "set": set_code}, headers=headers)
+                    if resp.status_code == 200:
+                        card = Card.from_scryfall_dict(resp.json())
+                        self._cache_card(card)
+                        return card
+                    elif resp.status_code == 429:
+                        self.rate_limited_until = time.time() + 60.0
+                        return self._create_synthetic_fallback_card(clean_name)
+
+                # Attempt 2: Exact search by clean name (global)
+                self._rate_limit()
+                resp = client.get(url_named, params={"exact": clean_name}, headers=headers)
                 if resp.status_code == 200:
                     card = Card.from_scryfall_dict(resp.json())
                     self._cache_card(card)
                     return card
                 elif resp.status_code == 429:
                     self.rate_limited_until = time.time() + 60.0
-                    logger.warning("Scryfall rate limit hit. Switching to offline cache for 60 seconds.")
                     return self._create_synthetic_fallback_card(clean_name)
 
-                # Attempt 2: Fuzzy search
+                # Attempt 3: Fuzzy search by clean name (global)
                 if fuzzy or resp.status_code == 404:
                     self._rate_limit()
-                    fuzzy_params = {"set": set_code} if set_code else {}
-                    fuzzy_params["fuzzy"] = clean_name
-                    resp_f = client.get(url_named, params=fuzzy_params, headers=headers)
+                    resp_f = client.get(url_named, params={"fuzzy": clean_name}, headers=headers)
                     if resp_f.status_code == 200:
                         card = Card.from_scryfall_dict(resp_f.json())
                         self._cache_card(card)
@@ -277,13 +288,23 @@ class ScryfallClient:
                         self.rate_limited_until = time.time() + 60.0
                         return self._create_synthetic_fallback_card(clean_name)
 
-                # Attempt 3: Front face search if name contains ' // '
+                # Attempt 4: Front face exact / fuzzy if DFC
                 if " // " in clean_name:
                     front_name = clean_name.split(" // ")[0].strip()
                     self._rate_limit()
                     resp_dfc = client.get(url_named, params={"exact": front_name}, headers=headers)
                     if resp_dfc.status_code == 200:
                         card = Card.from_scryfall_dict(resp_dfc.json())
+                        self._cache_card(card)
+                        return card
+                    elif resp_dfc.status_code == 429:
+                        self.rate_limited_until = time.time() + 60.0
+                        return self._create_synthetic_fallback_card(clean_name)
+
+                    self._rate_limit()
+                    resp_dfc_f = client.get(url_named, params={"fuzzy": front_name}, headers=headers)
+                    if resp_dfc_f.status_code == 200:
+                        card = Card.from_scryfall_dict(resp_dfc_f.json())
                         self._cache_card(card)
                         return card
 
@@ -359,7 +380,7 @@ class ScryfallClient:
         self._save_disk_cache()
         return resolved_cards, not_found_list
 
-    def enrich_deck(self, deck: Deck) -> Deck:
+    def enrich_deck(self, deck: Deck, force_refresh: bool = False) -> Deck:
         """
         Takes a Deck containing raw parsed items and enriches all items with Scryfall metadata
         using efficient batch requests and local caching.
@@ -373,62 +394,41 @@ class ScryfallClient:
         seen_queries: Set[str] = set()
         ident_to_clean_name: Dict[str, str] = {}
 
-        # Check in-memory cache first
         for item in all_items:
-            cached_card = self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
+            clean = self.clean_card_name(item.raw_name)
+            cached_card = None if force_refresh else self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
+            
+            # If cached card is synthetic or lacks real image, force fresh fetch
+            if cached_card and (cached_card.id.startswith("syn_") or not cached_card.image_uris or not cached_card.image_uris.normal or "back.jpg" in cached_card.image_uris.normal):
+                cached_card = None
+
             if cached_card:
                 item.card = cached_card
             else:
-                # Prepare identifier for batch request
-                clean = self.clean_card_name(item.raw_name)
-                query_dict: Dict[str, Any] = {}
-                if item.set_code and item.collector_number:
-                    query_dict = {"set": item.set_code, "collector_number": item.collector_number}
-                    q_key = f"set:{item.set_code.lower()}:{item.collector_number.lower()}"
-                elif item.set_code:
-                    query_dict = {"name": clean, "set": item.set_code}
-                    q_key = f"name_set:{clean.lower()}:{item.set_code.lower()}"
-                else:
-                    query_dict = {"name": clean}
-                    q_key = f"name:{clean.lower()}"
-
+                q_key = clean.lower()
                 if q_key not in seen_queries:
                     seen_queries.add(q_key)
-                    identifiers_to_query.append(query_dict)
+                    # Use name-based batch lookup for 100% reliable matching
+                    identifiers_to_query.append({"name": clean})
                     ident_to_clean_name[q_key] = clean
 
         # Batch query Scryfall for un-cached cards if not rate limited
         if identifiers_to_query:
             resolved_cards, not_found = self.fetch_cards_collection(identifiers_to_query)
 
-            # If some cards failed with set/collector_number or exact name, retry fallback by clean name
+            # If some cards failed, retry fallback with front face name for DFCs
             fallback_by_name: List[Dict[str, Any]] = []
             fallback_seen: Set[str] = set()
             for nf in not_found:
-                clean_target = None
-                if "set" in nf and "collector_number" in nf:
-                    q_k = f"set:{str(nf['set']).lower()}:{str(nf['collector_number']).lower()}"
-                    clean_target = ident_to_clean_name.get(q_k)
-                elif "name" in nf:
-                    clean_target = nf["name"]
-
+                clean_target = nf.get("name")
                 if not clean_target:
-                    for it in all_items:
-                        if it.set_code == nf.get("set") and it.collector_number == nf.get("collector_number"):
-                            clean_target = self.clean_card_name(it.raw_name)
-                            break
-
-                if clean_target:
-                    c_clean = self.clean_card_name(clean_target)
-                    c_key = c_clean.lower()
-                    if c_key not in fallback_seen and c_key not in self._cache_by_name:
-                        fallback_seen.add(c_key)
-                        fallback_by_name.append({"name": c_clean})
-                    if " // " in c_clean:
-                        front = c_clean.split(" // ")[0].strip()
-                        if front.lower() not in fallback_seen and front.lower() not in self._cache_by_name:
-                            fallback_seen.add(front.lower())
-                            fallback_by_name.append({"name": front})
+                    continue
+                c_clean = self.clean_card_name(clean_target)
+                if " // " in c_clean:
+                    front = c_clean.split(" // ")[0].strip()
+                    if front.lower() not in fallback_seen and front.lower() not in self._cache_by_name:
+                        fallback_seen.add(front.lower())
+                        fallback_by_name.append({"name": front})
 
             if fallback_by_name and time.time() >= self.rate_limited_until:
                 retry_cards, _ = self.fetch_cards_collection(fallback_by_name)
@@ -437,11 +437,13 @@ class ScryfallClient:
 
         # Match cards back to deck items, guaranteeing NO item has card=None
         for item in all_items:
-            if not item.card:
-                item.card = self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
-                if not item.card and time.time() >= self.rate_limited_until:
-                    item.card = self.get_card_by_name(item.raw_name, set_code=item.set_code)
-                if not item.card:
+            if not item.card or item.card.id.startswith("syn_") or not item.card.image_uris or "back.jpg" in item.card.image_uris.normal:
+                resolved = self._find_in_cache(item.raw_name, item.set_code, item.collector_number)
+                if (not resolved or resolved.id.startswith("syn_")) and time.time() >= self.rate_limited_until:
+                    resolved = self.get_card_by_name(item.raw_name, set_code=item.set_code)
+                if resolved and not resolved.id.startswith("syn_"):
+                    item.card = resolved
+                elif not item.card:
                     item.card = self._create_synthetic_fallback_card(item.raw_name)
 
         return deck
@@ -496,7 +498,7 @@ class ScryfallClient:
             return self.STATIC_STAPLE_IMAGES[clean_l]
         if clean_l in self._cache_by_name:
             c = self._cache_by_name[clean_l]
-            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal:
+            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal and "back.jpg" not in c.image_uris.normal:
                 return c.image_uris.normal
 
         # Check front face in cache
@@ -506,25 +508,25 @@ class ScryfallClient:
             return self.STATIC_STAPLE_IMAGES[front_l]
         if front_l in self._cache_by_name:
             c = self._cache_by_name[front_l]
-            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal:
+            if c.image_uris and c.image_uris.normal and "cards.scryfall.io" in c.image_uris.normal and "back.jpg" not in c.image_uris.normal:
                 return c.image_uris.normal
 
         cached = self._find_in_cache(clean, None, None)
-        if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io" in cached.image_uris.normal:
+        if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io" in cached.image_uris.normal and "back.jpg" not in cached.image_uris.normal:
             return cached.image_uris.normal
 
         # Query Scryfall to resolve real CDN URL if not cooling down
         if time.time() >= self.rate_limited_until:
             try:
                 card = self.get_card_by_name(clean)
-                if card and card.image_uris and card.image_uris.normal and "cards.scryfall.io" in card.image_uris.normal:
+                if card and card.image_uris and card.image_uris.normal and "cards.scryfall.io" in card.image_uris.normal and "back.jpg" not in card.image_uris.normal:
                     return card.image_uris.normal
                 if " // " in clean:
                     card_f = self.get_card_by_name(front)
-                    if card_f and card_f.image_uris and card_f.image_uris.normal and "cards.scryfall.io" in card_f.image_uris.normal:
+                    if card_f and card_f.image_uris and card_f.image_uris.normal and "cards.scryfall.io" in card_f.image_uris.normal and "back.jpg" not in card_f.image_uris.normal:
                         return card_f.image_uris.normal
             except Exception:
                 pass
 
-        return "https://cards.scryfall.io/normal/front/4/c/4c565076-5db2-47ea-8ee0-4a4fd7bb353d.jpg"
+        return "https://cards.scryfall.io/back.jpg"
 
