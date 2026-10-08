@@ -90,11 +90,12 @@ def test_parse_deckstats_sample():
 
 
 def test_parse_tcgplayer_sample():
-    deck = MTGDeckTextParser.parse(TCGPLAYER_SAMPLE)
+    deck = MTGDeckTextParser.parse(TCGPLAYER_SAMPLE, default_format="commander")
 
-    assert len(deck.maindeck) == 5
+    assert len(deck.commanders) == 1
+    assert deck.commanders[0].raw_name == "The Ur-Dragon"
+    assert len(deck.maindeck) == 4
     assert len(deck.sideboard) == 1
-    assert deck.maindeck[0].raw_name == "The Ur-Dragon"
     assert deck.sideboard[0].raw_name == "Relic of Progenitus"
 
 

@@ -109,9 +109,9 @@ class ScryfallClient:
         """Saves cached cards to disk."""
         try:
             self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-            cards_data = [c.model_dump() for c in set(self._cache_by_name.values())]
+            unique_cards = {c.id: c.model_dump() for c in self._cache_by_name.values()}
             with open(self.cache_file, "w", encoding="utf-8") as f:
-                json.dump(cards_data, f, ensure_ascii=False)
+                json.dump(list(unique_cards.values()), f, ensure_ascii=False)
         except Exception as e:
             logger.warning(f"Could not save Scryfall disk cache: {e}")
 
@@ -139,8 +139,8 @@ class ScryfallClient:
         clean = re.sub(r"^\d+\s*x?\s*", "", clean, flags=re.IGNORECASE).strip()
         # Strip leading/trailing special characters
         clean = clean.strip(" \t\r\n-*#")
-        # Normalize DFC double slashes
-        clean = re.sub(r"\s*//\s*", " // ", clean)
+        # Normalize DFC single or double slashes
+        clean = re.sub(r"\s*/+\s*", " // ", clean)
         return clean
 
     KNOWN_STAPLE_METADATA = {
@@ -409,18 +409,20 @@ class ScryfallClient:
         return deck
 
     def _cache_card(self, card: Card):
-        """Indexes card in cache by primary name and set/collector_number."""
+        """Indexes card in cache by primary name, front face name, single-slash variant, and set/collector_number."""
         self._cache_by_name[card.name.lower()] = card
-        # Also cache front face name for DFCs e.g. "Delver of Secrets"
+        # Also cache front face name and single slash variant for DFCs e.g. "Norman Osborn"
         if " // " in card.name:
             front = card.name.split(" // ")[0].strip().lower()
             self._cache_by_name[front] = card
+            single_slash = card.name.lower().replace(" // ", " / ")
+            self._cache_by_name[single_slash] = card
 
         if card.set_code and card.collector_number:
             self._cache_by_set_num[(card.set_code.lower(), card.collector_number.lower())] = card
 
     def _find_in_cache(self, name: str, set_code: Optional[str], collector_number: Optional[str]) -> Optional[Card]:
-        """Looks up a card from in-memory cache."""
+        """Looks up a card from in-memory cache with fallback on name variations."""
         if set_code and collector_number:
             key = (set_code.lower(), collector_number.lower())
             if key in self._cache_by_set_num:
@@ -430,18 +432,25 @@ class ScryfallClient:
         if clean_lower in self._cache_by_name:
             return self._cache_by_name[clean_lower]
 
-        # Check if front name of DFC was passed
+        # Check if front name of DFC was passed or if single slash / was passed
         if " // " in clean_lower:
             front = clean_lower.split(" // ")[0].strip()
             if front in self._cache_by_name:
                 return self._cache_by_name[front]
+        if " / " in clean_lower:
+            front = clean_lower.split(" / ")[0].strip()
+            if front in self._cache_by_name:
+                return self._cache_by_name[front]
+            double_slash = clean_lower.replace(" / ", " // ")
+            if double_slash in self._cache_by_name:
+                return self._cache_by_name[double_slash]
 
         return None
 
     def get_card_image_url(self, name: str) -> str:
         """
         Returns a high-resolution, dependable Scryfall image URL for any card name.
-        Uses verified CDN map first, then cache, and then direct Scryfall CDN redirect.
+        Uses verified CDN map first, then cache, and then direct Scryfall CDN redirect with fuzzy fallback.
         """
         import urllib.parse
         clean = self.clean_card_name(name)
@@ -453,6 +462,11 @@ class ScryfallClient:
             if c.image_uris and c.image_uris.normal and "cards.scryfall.io/back.jpg" not in c.image_uris.normal:
                 return c.image_uris.normal
 
-        # Direct CDN redirect URL loaded by browser without consuming backend API quota
-        return f"https://api.scryfall.com/cards/named?exact={urllib.parse.quote(clean)}&format=image"
+        cached = self._find_in_cache(clean, None, None)
+        if cached and cached.image_uris and cached.image_uris.normal and "cards.scryfall.io/back.jpg" not in cached.image_uris.normal:
+            return cached.image_uris.normal
+
+        # Direct CDN redirect URL using fuzzy front face for 100% reliable image loading in browser
+        front = clean.split(" // ")[0].split(" / ")[0].strip()
+        return f"https://api.scryfall.com/cards/named?fuzzy={urllib.parse.quote(front)}&format=image"
 

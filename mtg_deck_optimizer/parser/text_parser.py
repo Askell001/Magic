@@ -69,6 +69,12 @@ class MTGDeckTextParser:
                 item.section = DeckSection.MAINDECK
                 deck.maindeck.append(item)
 
+        # In Commander format, the first card in the list is the Commander if no explicit *CMDR* tag was provided
+        if default_format.lower() == "commander" and not deck.commanders and deck.maindeck:
+            first_item = deck.maindeck.pop(0)
+            first_item.section = DeckSection.COMMANDER
+            deck.commanders.append(first_item)
+
         return deck
 
     @classmethod
@@ -148,8 +154,8 @@ class MTGDeckTextParser:
         # Clean card name
         # Remove trailing/leading special symbols except valid card characters (like apostrophes, commas, slashes for DFCs)
         clean_name = card_body.strip(" \t\r\n-*#")
-        # Normalize double-slash spacing for split/DFC cards (e.g., "Fire//Ice" -> "Fire // Ice")
-        clean_name = re.sub(r"\s*//\s*", " // ", clean_name)
+        # Normalize double-slash spacing for split/DFC cards (e.g., "Fire//Ice", "Norman Osborn / Green Goblin" -> "Fire // Ice")
+        clean_name = re.sub(r"\s*/+\s*", " // ", clean_name)
         # Collapse multiple spaces
         clean_name = re.sub(r"\s+", " ", clean_name).strip()
 

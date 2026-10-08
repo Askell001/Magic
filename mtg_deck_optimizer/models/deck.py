@@ -89,24 +89,42 @@ class Deck(BaseModel):
     @computed_field
     @property
     def color_identity(self) -> List[str]:
-        """Deck color identity based on commanders, or union of all cards if no commander."""
+        """Deck color identity based on commanders, or union of colored cards if commander identity unresolved."""
         colors: Set[str] = set()
-        source_items = self.commanders if self.commanders else self.maindeck
         
-        for item in source_items:
-            if item.card and item.card.color_identity:
-                colors.update(item.card.color_identity)
-            else:
-                # Check Archetype Registry as safe zero-network fallback
-                clean_name = item.effective_name.lower().strip()
-                try:
-                    from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
-                    for reg_k, reg_v in CARD_METADATA_REGISTRY.items():
-                        if reg_k.lower() == clean_name:
-                            colors.update(reg_v[1])
-                            break
-                except Exception:
-                    pass
+        # 1. Primary: Evaluate all commanders
+        if self.commanders:
+            for item in self.commanders:
+                if item.card and item.card.color_identity:
+                    colors.update(item.card.color_identity)
+                elif item.card and item.card.colors:
+                    colors.update(item.card.colors)
+                elif item.card and item.card.card_faces:
+                    for f in item.card.card_faces:
+                        if f.colors:
+                            colors.update(f.colors)
+                else:
+                    # Check Archetype Registry as safe zero-network fallback
+                    clean_name = item.effective_name.lower().strip()
+                    # Also check front face if DFC
+                    front_name = clean_name.split(" // ")[0].split(" / ")[0].strip()
+                    try:
+                        from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
+                        for reg_k, reg_v in CARD_METADATA_REGISTRY.items():
+                            reg_lower = reg_k.lower()
+                            if reg_lower == clean_name or reg_lower == front_name:
+                                colors.update(reg_v[1])
+                                break
+                    except Exception:
+                        pass
+        
+        # 2. Fallback: If no commander or commander colors couldn't be resolved, infer from colored non-land cards in maindeck
+        if not colors and self.maindeck:
+            for item in self.maindeck:
+                if item.card and item.card.color_identity and "Land" not in item.card.type_line:
+                    colors.update(item.card.color_identity)
+                elif item.card and item.card.colors and "Land" not in item.card.type_line:
+                    colors.update(item.card.colors)
 
         # Standard WUBRG sort order
         wubrg = ["W", "U", "B", "R", "G"]

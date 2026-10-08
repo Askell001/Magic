@@ -312,22 +312,23 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.current_wotc = None
             st.session_state.current_pip = None
             st.session_state.current_bracket_audit = None
-            st.session_state.optimized_report = None
-            st.session_state.optimized_deck = None
-
-        cmdr_input = st.text_input(
-            "👑 Comandante (Opcional - Si se deja vacío, se extraerá de las etiquetas *CMDR* o // Commander de Moxfield):",
-            value=st.session_state.cmdr_override,
-            placeholder="Ej: Atraxa, Praetors' Voice",
-        )
-        st.session_state.cmdr_override = cmdr_input
-
-        # Live detected commander feedback pill
-        detected_cmdr_preview = extract_commander_for_preview(deck_text_input, cmdr_input)
+        # Live detected commander pill (always line 1 or *CMDR* tag)
+        detected_cmdr_preview = extract_commander_for_preview(deck_text_input)
         if detected_cmdr_preview:
-            st.markdown(f"<div style='margin-top:-6px; margin-bottom:10px; font-size:0.86rem; color:#58a6ff;'>👑 <strong>Comandante Detectado:</strong> <code>{detected_cmdr_preview}</code></div>", unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div style="background:#0d1117; border:1px solid #30363d; border-radius:8px; padding:10px 14px; margin-top:10px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                        <span style="font-size:0.95rem; color:#58a6ff; font-weight:bold;">👑 Comandante:</span> 
+                        <span style="font-size:1.02rem; color:#f0f6fc; font-weight:bold; margin-left:6px;">{detected_cmdr_preview}</span>
+                    </div>
+                    <span class="badge-in">1ª Carta / Tag CMDR</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         elif deck_text_input.strip():
-            st.markdown("<div style='margin-top:-6px; margin-bottom:10px; font-size:0.86rem; color:#f0883e;'>⚠️ <em>No se detectó etiqueta *CMDR* o // Commander. Se asignará la primera carta como comandante si no se especifica.</em></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:8px; margin-bottom:12px; font-size:0.86rem; color:#f0883e;'>⚠️ <em>Pega tu lista de cartas. La primera carta será reconocida automáticamente como el Comandante.</em></div>", unsafe_allow_html=True)
 
     with col_config:
         st.markdown("#### 🏆 Sistema Oficial de 5 Brackets WotC")
@@ -461,7 +462,6 @@ if "Optimizar Mazo" in app_mode:
             pre_deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
                 deck_name="Deck Preview",
-                commander_override=cmdr_input.strip() if cmdr_input.strip() else None,
                 enrich=False,
             )
             for it in pre_deck.get_all_items():
@@ -567,7 +567,6 @@ if "Optimizar Mazo" in app_mode:
             st.session_state.current_bracket_audit = None
             st.session_state.optimized_report = None
             st.session_state.raw_decklist = ""
-            st.session_state.cmdr_override = ""
             st.rerun()
 
     if analyze_btn and can_process:
@@ -578,7 +577,7 @@ if "Optimizar Mazo" in app_mode:
             status_text = st.empty()
 
             # Step 1: Normalize & Detect Commander
-            active_cmdr_name = extract_commander_for_preview(deck_text_input, cmdr_input)
+            active_cmdr_name = extract_commander_for_preview(deck_text_input)
             status_text.markdown(f"📖 **Paso 1/4:** Leyendo lista Moxfield y detectando comandante (**{active_cmdr_name or 'Auto-detectando'}**)...")
             progress_bar.progress(25)
             time.sleep(0.05)
@@ -589,7 +588,6 @@ if "Optimizar Mazo" in app_mode:
             deck, _ = ingestion_service.ingest_from_text(
                 raw_text=deck_text_input,
                 deck_name="Commander Deck",
-                commander_override=cmdr_input.strip() if cmdr_input.strip() else None,
             )
 
             # Step 3: WotC Rules Validation & Mana Pips
