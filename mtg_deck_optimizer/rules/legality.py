@@ -2,7 +2,7 @@
 Singleton Rule Validator and Official Commander Banlist Validator.
 """
 
-from typing import Set, Dict, List, Tuple, Optional
+from typing import Set, Dict, List, Tuple, Optional, Union
 from ..models.card import Card
 from ..models.deck import Deck, DeckItem
 
@@ -123,6 +123,19 @@ class SingletonValidator:
 
 class BanlistValidator:
     """Validates format legality against Scryfall legality metadata and the official banlist."""
+
+    @classmethod
+    def is_banned(cls, card_name_or_card: Union[str, Card]) -> bool:
+        """Convenience method checking whether a card name or Card object is banned."""
+        if isinstance(card_name_or_card, str):
+            name_lower = card_name_or_card.strip().lower()
+            if name_lower in OFFICIAL_COMMANDER_BANLIST:
+                return True
+            if " // " in name_lower and name_lower.split(" // ")[0].strip() in OFFICIAL_COMMANDER_BANLIST:
+                return True
+            return False
+        banned, _ = cls.is_banned_in_commander(card_name_or_card)
+        return banned
 
     @classmethod
     def is_banned_in_commander(cls, card: Card) -> Tuple[bool, Optional[str]]:

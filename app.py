@@ -21,6 +21,7 @@ from mtg_deck_optimizer.deckbuilder.strategy_service import (
     resolve_dynamic_strategy,
     get_strategy_service,
 )
+from mtg_deck_optimizer.edhrec.synergy_engine import get_edhrec_engine, fetch_edhrec_data
 from mtg_deck_optimizer.exporter.deck_exporter import DeckExporter
 from mtg_deck_optimizer.intent import build_user_intent
 from mtg_deck_optimizer.brackets.standards import (
@@ -579,8 +580,9 @@ if "Optimizar Mazo" in app_mode:
         st.success("✅ **Reglamento WOTC:** Identidad de color, singleton y banlist 100% legales.")
 
     # Interactive Step 2 Diagnostic Tabs
-    tab_gallery, tab_mana_land, tab_wotc_audit, tab_gc_db = st.tabs([
+    tab_gallery, tab_edhrec, tab_mana_land, tab_wotc_audit, tab_gc_db = st.tabs([
         "🖼️ Galería Visual del Mazo",
+        "🌐 Sugerencias de la Comunidad (EDHREC Sync)",
         "⚖️ Balance de Maná y Tierras",
         "🏆 Auditoría WOTC 5-Bracket Engine",
         "📚 Catálogo Oficial de Game Changers",
@@ -603,6 +605,66 @@ if "Optimizar Mazo" in app_mode:
                         cmc_label = f"{item.card.cmc:.0f} CMC" if "Land" not in item.card.type_line else "Tierra"
                         price_label = f"${item.total_price_usd:.2f}" if item.total_price_usd else ""
                         st.caption(f"{cmc_label} | {price_label}")
+
+    with tab_edhrec:
+        st.markdown(f"### 🌐 Sugerencias de la Comunidad (EDHREC Sync) para {deck.commander_name or 'tu Comandante'}")
+        st.caption("Extracción en tiempo real desde la base comunitaria de EDHREC, almacenada en MongoDB Atlas con filtro obligatorio de Color Identity, Banlist y límites de Bracket.")
+
+        if not deck.commander_name:
+            st.info("Ingresa o selecciona un Comandante en el Paso 1 para ver las sugerencias de la comunidad de EDHREC.")
+        else:
+            with st.spinner("Consultando datos comunitarios y sincronizando con MongoDB Atlas..."):
+                edh_engine = get_edhrec_engine()
+                raw_edhrec = edh_engine.fetch_edhrec_data(deck.commander_name)
+                edhrec_syn = edh_engine.filter_by_wotc_rules(raw_edhrec, deck.color_identity, opt_bracket_num)
+
+            # Metadata header
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("📊 Mazos Analizados", f"{edhrec_syn.total_decks:,}")
+            m2.metric("🏷️ Tema / Arquetipo", edhrec_syn.archetype_theme)
+            m3.metric("🎯 Bracket Seleccionado", f"Bracket {opt_bracket_num}")
+            cache_label = "💾 MongoDB Cache" if edhrec_syn.from_cache else "🌐 En Vivo (EDHREC)"
+            m4.metric("🔄 Origen de Datos", cache_label)
+
+            st.divider()
+
+            # 1. New Releases / Novedades de Sets Recientes
+            if edhrec_syn.new_cards:
+                st.markdown("#### 🚀 Novedades de Sets Recientes (New Releases)")
+                st.caption("Cartas recién lanzadas compatibles con tu comandante y filtradas por reglas WotC:")
+                n_cols = st.columns(min(len(edhrec_syn.new_cards[:6]), 6))
+                for idx, c in enumerate(edhrec_syn.new_cards[:6]):
+                    with n_cols[idx % len(n_cols)]:
+                        card_img = c.image_url or get_card_image_url(c.name)
+                        st.image(card_img, use_container_width=True)
+                        st.markdown(f"**{c.name}**")
+                        syn_badge = f"+{c.synergy:.0f}%" if c.synergy > 0 else f"{c.synergy:.0f}%"
+                        st.caption(f"Sinergia: `{syn_badge}` | {c.cmc:.0f} CMC")
+
+            # 2. High Synergy / Sinergia Máxima
+            if edhrec_syn.high_synergy_cards:
+                st.markdown("#### ⚡ Cartas de Sinergia Máxima (High Synergy)")
+                st.caption("Cartas con la mayor tasa de sinergia única con este comandante:")
+                s_cols = st.columns(min(len(edhrec_syn.high_synergy_cards[:6]), 6))
+                for idx, c in enumerate(edhrec_syn.high_synergy_cards[:6]):
+                    with s_cols[idx % len(s_cols)]:
+                        card_img = c.image_url or get_card_image_url(c.name)
+                        st.image(card_img, use_container_width=True)
+                        st.markdown(f"**{c.name}**")
+                        st.caption(f"Sinergia: `+{c.synergy:.0f}%` | Inclusión: `{c.inclusion_percent:.0f}%`")
+
+            # 3. Top Cards / Staples del Comandante
+            if edhrec_syn.top_cards:
+                st.markdown("#### 👑 Soportes / Staples del Comandante (Top Cards)")
+                st.caption("Las cartas más populares y consistentes jugadas en este arquetipo:")
+                t_cols = st.columns(min(len(edhrec_syn.top_cards[:6]), 6))
+                for idx, c in enumerate(edhrec_syn.top_cards[:6]):
+                    with t_cols[idx % len(t_cols)]:
+                        card_img = c.image_url or get_card_image_url(c.name)
+                        st.image(card_img, use_container_width=True)
+                        st.markdown(f"**{c.name}**")
+                        p_str = f"${c.price_usd:.2f}" if c.price_usd else ""
+                        st.caption(f"Inclusión: `{c.inclusion_percent:.0f}%` {(' | ' + p_str) if p_str else ''}")
 
     with tab_mana_land:
         st.markdown("### 🎨 Densidad de Pips de Color vs Fuentes de Maná")

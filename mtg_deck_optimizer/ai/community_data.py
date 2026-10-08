@@ -109,6 +109,48 @@ class CommunityDataService:
             if front in COMMUNITY_COMMANDER_DATABASE:
                 return COMMUNITY_COMMANDER_DATABASE[front]
 
+        # Query real-time EDHREC Synergy Engine (with MongoDB cache)
+        try:
+            from ..edhrec.synergy_engine import get_edhrec_engine
+            engine = get_edhrec_engine()
+            edhrec_data = engine.fetch_edhrec_data(commander_name)
+            if edhrec_data and (edhrec_data.high_synergy_cards or edhrec_data.top_cards):
+                syn_cards = [
+                    SynergyCard(
+                        name=c.name,
+                        inclusion_percent=c.inclusion_percent,
+                        synergy_score=c.synergy,
+                        primary_role=c.primary_role if c.primary_role != "General" else "Synergy",
+                        estimated_price_usd=c.price_usd if c.price_usd else 2.50,
+                        cmc=c.cmc,
+                        type_line=c.type_line,
+                    )
+                    for c in edhrec_data.high_synergy_cards
+                ]
+                staple_cards = [
+                    SynergyCard(
+                        name=c.name,
+                        inclusion_percent=c.inclusion_percent,
+                        synergy_score=c.synergy,
+                        primary_role=c.primary_role if c.primary_role != "General" else "Staple",
+                        estimated_price_usd=c.price_usd if c.price_usd else 2.00,
+                        cmc=c.cmc,
+                        type_line=c.type_line,
+                    )
+                    for c in edhrec_data.top_cards
+                ]
+                return CommanderCommunityData(
+                    commander_name=commander_name,
+                    archetype_theme=edhrec_data.archetype_theme or "Commander Archetype",
+                    total_decks_analyzed=edhrec_data.total_decks if edhrec_data.total_decks > 0 else 10000,
+                    top_synergy_cards=syn_cards[:10],
+                    top_staples=staple_cards[:8],
+                    popular_combos=["High-synergy community engine lines", "Synergy combat & value loops"],
+                    average_mana_curve={1: 10, 2: 20, 3: 20, 4: 15, 5: 10, 6: 6},
+                )
+        except Exception:
+            pass
+
         # Dynamic fallback generation for any other commander
         colors = color_identity or ["W", "U", "B", "R", "G"]
         tl = (type_line or "").lower()

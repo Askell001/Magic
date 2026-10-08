@@ -69,6 +69,14 @@ from .deckbuilder import (
     CommanderSuggestion,
     DeckRoleBreakdown,
 )
+from .edhrec import (
+    EDHREC_Synergy_Engine,
+    EDHRECCacheMongoService,
+    EDHRECCommanderData,
+    EDHRECCardItem,
+    fetch_edhrec_data,
+    format_commander_slug,
+)
 from .exporter import DeckExporter
 
 __version__ = "0.6.0"
