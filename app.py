@@ -608,7 +608,9 @@ if "Optimizar Mazo" in app_mode:
     if not wotc_result.is_legal:
         st.error(f"❌ **Infracciones del Reglamento WOTC ({len(wotc_result.violations)} encontradas):**")
         for v in wotc_result.violations:
-            st.markdown(f"- 🔴 **[{v.rule_type.value}]** {v.message}")
+            rule_badge = getattr(v, 'rule_name', None) or (v.rule_type.value if hasattr(getattr(v, 'rule_type', None), 'value') else getattr(v, 'rule_type', 'Regla WOTC'))
+            msg = getattr(v, 'message', None) or getattr(v, 'explanation', str(v))
+            st.markdown(f"- 🔴 **[{rule_badge}]** {msg}")
     else:
         st.success("✅ **Reglamento WOTC:** Identidad de color, singleton y banlist 100% legales.")
 
@@ -770,7 +772,8 @@ if "Optimizar Mazo" in app_mode:
         if not bracket_audit.is_legal_for_bracket:
             st.error(f"⚠️ **Infracciones de Bracket {opt_bracket_num} encontradas ({len(bracket_audit.violations)}):**")
             for viol in bracket_audit.violations:
-                st.markdown(f"- 🔴 **[{viol.category.value}]**: {viol.message}")
+                v_cat = viol.category.value if hasattr(viol.category, 'value') else str(getattr(viol, 'category', 'Infracción'))
+                st.markdown(f"- 🔴 **[{v_cat}]**: {viol.message}")
         else:
             st.success(bracket_audit.status_headline)
 

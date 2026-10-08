@@ -38,6 +38,14 @@ class CardLegalityResult(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class RuleViolation(BaseModel):
+    rule_name: str = "WotC Rule"
+    rule_type: str = "WotC Rule"
+    offending_card: str = ""
+    explanation: str = ""
+    message: str = ""
+
+
 class DeckValidationResult(BaseModel):
     """Complete diagnostic report for an entire Commander deck."""
     deck_name: str
@@ -56,10 +64,16 @@ class DeckValidationResult(BaseModel):
         return self.is_fully_legal
 
     @property
-    def violations(self) -> List[Any]:
+    def violations(self) -> List[RuleViolation]:
         v_list = []
-        for e in self.all_errors:
-            v_list.append(type('Violation', (), {'rule_name': 'WotC Rule', 'offending_card': 'Card', 'explanation': e})())
+        for e in self.color_identity_errors:
+            v_list.append(RuleViolation(rule_name="Color Identity", rule_type="Color Identity", explanation=e, message=e))
+        for e in self.banlist_errors:
+            v_list.append(RuleViolation(rule_name="Banlist", rule_type="Banlist", explanation=e, message=e))
+        for e in self.singleton_errors:
+            v_list.append(RuleViolation(rule_name="Singleton", rule_type="Singleton", explanation=e, message=e))
+        for e in self.general_errors:
+            v_list.append(RuleViolation(rule_name="Regla WotC", rule_type="Regla WotC", explanation=e, message=e))
         return v_list
 
     @property
