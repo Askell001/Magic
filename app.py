@@ -1314,3 +1314,45 @@ else:
                     key="btn_gen_plain",
                 )
 
+        # ---------------------------------------------------------------------
+        # Asistente IA: Personalización y Refinamiento Interactivo del Mazo
+        # ---------------------------------------------------------------------
+        st.divider()
+        st.markdown("### 🤖 Asistente IA: Personalizar y Ajustar este Mazo")
+        st.caption("Sugiere a la IA qué cambios específicos deseas aplicar en lenguaje natural (ej. *'Quiero exactamente 32 tierras'*, *'Hazlo más budget sin cartas caras'*, *'Más interacción rápida y counterspells'*, *'Más ramp y rocas de maná'*):")
+
+        # Botones de ajuste rápido
+        pr_col1, pr_col2, pr_col3, pr_col4 = st.columns(4)
+        preset_prompt = ""
+        with pr_col1:
+            if st.button("📉 Menos Tierras (-3)", key="btn_preset_less_lands", use_container_width=True):
+                preset_prompt = "Quiero menos tierras y más hechizos de apoyo"
+        with pr_col2:
+            if st.button("📈 Más Tierras (+3)", key="btn_preset_more_lands", use_container_width=True):
+                preset_prompt = "Quiero más tierras y estabilidad de maná"
+        with pr_col3:
+            if st.button("💰 Versión Budget (< $100)", key="btn_preset_budget", use_container_width=True):
+                preset_prompt = "Quiero una versión budget económica sin cartas de más de $20 USD"
+        with pr_col4:
+            if st.button("⚡ Más Interacción / Counters", key="btn_preset_interaction", use_container_width=True):
+                preset_prompt = "Quiero más interacción rápida y counterspells"
+
+        ai_custom_prompt = st.text_input(
+            "📝 Instrucción para la IA:",
+            value=preset_prompt,
+            placeholder="Ej: Quiero exactamente 30 tierras, más aceleración y sustitutos económicos...",
+            key="input_ai_custom_prompt",
+        )
+
+        if st.button("✨ Aplicar Cambios con IA al Mazo", type="secondary", use_container_width=True, key="btn_apply_ai_refinement"):
+            if not ai_custom_prompt.strip():
+                st.warning("⚠️ Escribe una instrucción antes de aplicar los cambios.")
+            else:
+                with st.spinner("La IA está optimizando y ajustando el mazo según tus preferencias..."):
+                    updated_result, changelog = deckbuilder_gen.refine_deck_with_prompt(res, ai_custom_prompt)
+                    st.session_state.generated_deck_result = updated_result
+                    st.success("🎉 ¡Mazo personalizado exitosamente con tus sugerencias!")
+                    st.info(f"**Registro de Cambios Realizados:**\n{changelog}")
+                    st.rerun()
+
+
