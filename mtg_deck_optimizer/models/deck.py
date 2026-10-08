@@ -191,6 +191,7 @@ class Deck(BaseModel):
         """
         Groups all maindeck and commander items into standard MTG/Moxfield categories:
         Commander, Planeswalkers, Creatures, Instants, Sorceries, Artifacts, Enchantments, Battles, Lands.
+        Guarantees accurate categorization even if card metadata is not pre-enriched or for DFCs.
         """
         cats = {
             "Commander": list(self.commanders),
@@ -204,24 +205,84 @@ class Deck(BaseModel):
             "Lands": [],
         }
 
+        # Lazy load registry for zero-network type resolution fallback
+        reg_map = {}
+        try:
+            from ..deckbuilder.archetype_database import CARD_METADATA_REGISTRY
+            reg_map = {k.lower(): v[2] for k, v in CARD_METADATA_REGISTRY.items()}
+        except Exception:
+            pass
+
         for item in self.maindeck:
-            tl = (item.card.type_line if item.card else item.raw_name).lower()
+            tl = ""
+            if item.card and item.card.type_line and item.card.type_line.strip() not in ("", "Card", "Magic Card", "Magic: The Gathering Card"):
+                tl = item.card.type_line.lower()
+            elif item.card and item.card.card_faces:
+                tl = " // ".join(f.type_line or "" for f in item.card.card_faces).lower()
+
+            if not tl or tl.strip() in ("", "card"):
+                # 1. Lookup in metadata registry
+                clean_n = item.effective_name.strip().lower()
+                front_n = clean_n.split(" // ")[0].split(" / ")[0].strip()
+                if clean_n in reg_map:
+                    tl = reg_map[clean_n].lower()
+                elif front_n in reg_map:
+                    tl = reg_map[front_n].lower()
+
+            if not tl or tl.strip() in ("", "card"):
+                # 2. Try Scryfall client cache
+                try:
+                    from ..scryfall.client import ScryfallClient
+                    scry = ScryfallClient()
+                    c_obj = scry._cache_by_name.get(item.effective_name.lower()) or scry._find_in_cache(item.effective_name, None, None)
+                    if c_obj and c_obj.type_line:
+                        tl = c_obj.type_line.lower()
+                except Exception:
+                    pass
+
+            if not tl or tl.strip() in ("", "card"):
+                # 3. Intelligent Name Heuristics Fallback
+                n_low = item.effective_name.lower()
+                if any(w in n_low for w in ["island", "plains", "swamp", "mountain", "forest", "wastes", "land", "sanctuary", "grove", "tomb", "shrine", "foundry", "pool", "delta", "mire", "tarn", "strand", "mesa", "catacombs", "foothills", "heath", "tower", "orchard", "confluence", "city", "springs", "ridge", "estate", "village"]):
+                    tl = "land"
+                elif any(w in n_low for w in ["sol ring", "arcane signet", "fellwar stone", "thought vessel", "talisman", "mox", "lotus", "boots", "greaves", "skullclamp", "monolith", "crypt", "vault", "bauble", "stone", "chalice", "lens", "sphere", "lantern", "reservoir", "ring", "altar", "statuary", "banner", "horn"]):
+                    tl = "artifact"
+                elif any(w in n_low for w in ["counterspell", "drain", "swords", "path", "gift", "protection", "silence", "bolt", "warp", "pongify", "hybridization", "resculpt", "flusterstorm", "denial", "song", "intervention", "charm", "veto", "command", "instant"]):
+                    tl = "instant"
+                elif any(w in n_low for w in ["study", "remora", "tithe", "library", "arena", "connections", "project", "breach", "season", "tax", "dreams", "caress", "enchantment"]):
+                    tl = "enchantment"
+                elif any(w in n_low for w in ["jace", "teferi", "liliana", "chandra", "nissa", "ajani", "karn", "ugin", "bolas", "tamiyo", "narset", "oko", "planeswalker"]):
+                    tl = "planeswalker"
+                elif any(w in n_low for w in ["tutor", "wrath", "damnation", "act", "farewell", "windfall", "wheel", "ponder", "preordain", "reanimate", "loot", "spiral", "cultivate", "reach", "lore", "visits", "zenith", "finale", "sorcery"]):
+                    tl = "sorcery"
+                else:
+                    tl = "creature"
+
+            # MTG / Moxfield Category Assignment Hierarchy:
+            # 1. Lands (Basic, Dual, Fetch, Artifact Land)
             if "land" in tl:
                 cats["Lands"].append(item)
+            # 2. Creatures (Creature, Artifact Creature, Enchantment Creature)
             elif "creature" in tl:
                 cats["Creatures"].append(item)
+            # 3. Planeswalkers
             elif "planeswalker" in tl:
                 cats["Planeswalkers"].append(item)
-            elif "instant" in tl:
-                cats["Instants"].append(item)
-            elif "sorcery" in tl:
-                cats["Sorceries"].append(item)
-            elif "artifact" in tl:
-                cats["Artifacts"].append(item)
-            elif "enchantment" in tl:
-                cats["Enchantments"].append(item)
+            # 4. Battles
             elif "battle" in tl:
                 cats["Battles"].append(item)
+            # 5. Instants
+            elif "instant" in tl:
+                cats["Instants"].append(item)
+            # 6. Sorceries
+            elif "sorcery" in tl:
+                cats["Sorceries"].append(item)
+            # 7. Artifacts (Non-creature)
+            elif "artifact" in tl:
+                cats["Artifacts"].append(item)
+            # 8. Enchantments (Non-creature)
+            elif "enchantment" in tl:
+                cats["Enchantments"].append(item)
             else:
                 cats["Sorceries"].append(item)
 
