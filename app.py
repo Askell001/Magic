@@ -46,6 +46,7 @@ from mtg_deck_optimizer.analytics.advanced_analytics import Advanced_Deck_Analyt
 from mtg_deck_optimizer.analytics.mulligan_simulator import MulliganSimulator
 from mtg_deck_optimizer.analytics.tradeoff_engine import TradeoffEngine
 from mtg_deck_optimizer.analytics.land_balance_engine import LandBalanceEngine, LandBalanceReport
+from mtg_deck_optimizer.ui.moxfield_viewer import render_moxfield_deck_html, render_moxfield_edhrec_html
 from seed_banned_cards import validate_banned_cards
 
 # -----------------------------------------------------------------------------
@@ -621,6 +622,7 @@ if "Optimizar Mazo" in app_mode:
         st.stop()
 
     deck = st.session_state.current_deck
+
     wotc_result = st.session_state.current_wotc or rules_engine.validate_deck(deck)
     pip_report = st.session_state.current_pip or Advanced_Deck_Analytics.analyze_mana_pip_balance(deck)
     bracket_audit = st.session_state.current_bracket_audit or WOTC_Bracket_Engine.audit_deck(deck, opt_bracket_num)
@@ -655,50 +657,15 @@ if "Optimizar Mazo" in app_mode:
     ])
 
     with tab_gallery:
-        st.markdown("### 🎴 Galería y Visor de Cartas del Mazo")
-        all_deck_items = deck.commanders + deck.maindeck
+        st.markdown("### 🎴 Galería y Visor Interactivo del Mazo (Estilo Moxfield)")
+        st.caption("Pasa el cursor o haz clic sobre cualquier carta en sus categorías oficiales para previsualizar su arte en alta definición y precios de forma instantánea.")
         
-        gal_col_list, gal_col_view = st.columns([3, 2])
-        with gal_col_list:
-            st.markdown("#### 📋 Listado de Cartas")
-            card_names_list = [f"{item.quantity}x {item.effective_name}" for item in all_deck_items]
-            selected_deck_idx = st.selectbox(
-                "🔎 Selecciona una carta para previsualizar su arte:",
-                range(len(all_deck_items)),
-                format_func=lambda idx: card_names_list[idx],
-                key="deck_gallery_card_selector",
-            )
-            
-            # Categorized breakdown
-            sections_map = {}
-            for item in all_deck_items:
-                t_label = "Tierras" if (item.card and "Land" in item.card.type_line) else (
-                    "Comandante" if item.section == DeckSection.COMMANDER else (
-                        item.card.primary_type if (item.card and item.card.primary_type) else "Hechizos"
-                    )
-                )
-                sections_map.setdefault(t_label, []).append(item)
-
-            for sec_name, sec_items in sections_map.items():
-                with st.expander(f"📁 {sec_name} ({len(sec_items)} cartas)", expanded=False):
-                    for sit in sec_items:
-                        cmc_t = f"({sit.card.cmc:.0f} CMC)" if sit.card and "Land" not in sit.card.type_line else ""
-                        st.markdown(f"- **{sit.quantity}x {sit.effective_name}** {cmc_t}")
-
-        with gal_col_view:
-            if all_deck_items:
-                sel_item = all_deck_items[selected_deck_idx]
-                st.markdown(f"#### 🖼️ {sel_item.effective_name}")
-                sel_img = get_card_image_url(sel_item)
-                st.image(sel_img, use_container_width=True)
-                if sel_item.card:
-                    c_info = sel_item.card
-                    p_val = getattr(sel_item, "total_price_usd", None) or getattr(c_info, "price_usd", None) or (c_info.prices.usd if (c_info.prices and c_info.prices.usd) else 0.0)
-                    st.caption(f"**Tipo:** {c_info.type_line} | **CMC:** {c_info.cmc:.0f} | **Precio:** ${p_val:.2f} USD")
+        gallery_html = render_moxfield_deck_html(deck, get_card_image_url)
+        st.components.v1.html(gallery_html, height=760, scrolling=True)
 
     with tab_edhrec:
         st.markdown(f"### 🌐 Sugerencias de la Comunidad (EDHREC Sync) para {deck.commander_name or 'tu Comandante'}")
-        st.caption("Extracción comunitaria filtrada con validación de Identidad de Color (CR 903.4), Banlist oficial y estándares de Bracket.")
+        st.caption("Recomendaciones de alta sinergia filtradas bajo Identidad de Color (CR 903.4), Banlist oficial y estándares de Bracket.")
 
         if not deck.commander_name:
             st.info("Ingresa o selecciona un Comandante en el Paso 1 para ver las sugerencias de la comunidad de EDHREC.")
@@ -708,7 +675,7 @@ if "Optimizar Mazo" in app_mode:
                 raw_edhrec = edh_engine.fetch_edhrec_data(deck.commander_name)
                 edhrec_syn = edh_engine.filter_by_wotc_rules(raw_edhrec, deck.color_identity, opt_bracket_num)
 
-            # Metadata header (clean, without database internal mentions)
+            # Metadata header
             m1, m2, m3 = st.columns(3)
             m1.metric("📊 Mazos Analizados", f"{edhrec_syn.total_decks:,}")
             m2.metric("🏷️ Tema / Arquetipo", edhrec_syn.archetype_theme)
@@ -716,110 +683,8 @@ if "Optimizar Mazo" in app_mode:
 
             st.divider()
 
-            edh_sub1, edh_sub2, edh_sub3 = st.tabs([
-                "⚡ Sinergia Máxima (High Synergy)",
-                "👑 Staples del Comandante (Top Cards)",
-                "🚀 Novedades de Sets (New Releases)",
-            ])
-
-            # Sub-Tab 1: High Synergy
-            with edh_sub1:
-                if not edhrec_syn.high_synergy_cards:
-                    st.info("No se encontraron cartas adicionales de sinergia para esta combinación de colores.")
-                else:
-                    col_t1, col_v1 = st.columns([3, 2])
-                    with col_t1:
-                        st.markdown("##### 📜 Cartas con Mayor Tasa de Sinergia Única")
-                        syn_names = [f"{c.name} (+{c.synergy:.0f}% Sinergia, {c.cmc:.0f} CMC)" for c in edhrec_syn.high_synergy_cards]
-                        sel_syn_idx = st.selectbox(
-                            "🔎 Selecciona una carta para ver su arte oficial:",
-                            range(len(edhrec_syn.high_synergy_cards)),
-                            format_func=lambda i: syn_names[i],
-                            key="edhrec_syn_selector",
-                        )
-                        syn_table = []
-                        for c in edhrec_syn.high_synergy_cards[:12]:
-                            syn_table.append({
-                                "Carta": c.name,
-                                "Sinergia": f"+{c.synergy:.0f}%",
-                                "Inclusión": f"{c.inclusion_percent:.0f}%",
-                                "CMC": f"{c.cmc:.0f}",
-                                "Tipo": c.type_line,
-                            })
-                        st.dataframe(pd.DataFrame(syn_table), use_container_width=True, hide_index=True)
-
-                    with col_v1:
-                        sel_c = edhrec_syn.high_synergy_cards[sel_syn_idx]
-                        st.markdown(f"##### 🖼️ {sel_c.name}")
-                        st.image(get_card_image_url(sel_c.name), use_container_width=True)
-                        st.caption(f"**Sinergia:** `+{sel_c.synergy:.0f}%` | **Inclusión:** `{sel_c.inclusion_percent:.0f}%` | **CMC:** {sel_c.cmc:.0f}")
-
-            # Sub-Tab 2: Top Staples
-            with edh_sub2:
-                if not edhrec_syn.top_cards:
-                    st.info("No se encontraron cartas de soporte para este arquetipo.")
-                else:
-                    col_t2, col_v2 = st.columns([3, 2])
-                    with col_t2:
-                        st.markdown("##### 📜 Cartas Más Populares y Consistentes")
-                        top_names = [f"{c.name} ({c.inclusion_percent:.0f}% Inclusión, {c.cmc:.0f} CMC)" for c in edhrec_syn.top_cards]
-                        sel_top_idx = st.selectbox(
-                            "🔎 Selecciona una carta para ver su arte oficial:",
-                            range(len(edhrec_syn.top_cards)),
-                            format_func=lambda i: top_names[i],
-                            key="edhrec_top_selector",
-                        )
-                        top_table = []
-                        for c in edhrec_syn.top_cards[:12]:
-                            p_str = f"${c.price_usd:.2f}" if c.price_usd else "-"
-                            top_table.append({
-                                "Carta": c.name,
-                                "Inclusión": f"{c.inclusion_percent:.0f}%",
-                                "CMC": f"{c.cmc:.0f}",
-                                "Tipo": c.type_line,
-                                "Precio": p_str,
-                            })
-                        st.dataframe(pd.DataFrame(top_table), use_container_width=True, hide_index=True)
-
-                    with col_v2:
-                        sel_t = edhrec_syn.top_cards[sel_top_idx]
-                        st.markdown(f"##### 🖼️ {sel_t.name}")
-                        st.image(get_card_image_url(sel_t.name), use_container_width=True)
-                        p_t = f"${sel_t.price_usd:.2f} USD" if sel_t.price_usd else "N/A"
-                        st.caption(f"**Inclusión:** `{sel_t.inclusion_percent:.0f}%` | **CMC:** {sel_t.cmc:.0f} | **Precio:** {p_t}")
-
-            # Sub-Tab 3: New Releases
-            with edh_sub3:
-                if not edhrec_syn.new_cards:
-                    st.info("No se registraron novedades recientes de sets nuevos para este comandante.")
-                else:
-                    col_t3, col_v3 = st.columns([3, 2])
-                    with col_t3:
-                        st.markdown("##### 📜 Novedades de Sets Recientes Compatibles")
-                        new_names = [f"{c.name} ({c.cmc:.0f} CMC)" for c in edhrec_syn.new_cards]
-                        sel_new_idx = st.selectbox(
-                            "🔎 Selecciona una carta para ver su arte oficial:",
-                            range(len(edhrec_syn.new_cards)),
-                            format_func=lambda i: new_names[i],
-                            key="edhrec_new_selector",
-                        )
-                        new_table = []
-                        for c in edhrec_syn.new_cards[:12]:
-                            syn_b = f"+{c.synergy:.0f}%" if c.synergy > 0 else f"{c.synergy:.0f}%"
-                            new_table.append({
-                                "Carta": c.name,
-                                "Sinergia": syn_b,
-                                "CMC": f"{c.cmc:.0f}",
-                                "Tipo": c.type_line,
-                            })
-                        st.dataframe(pd.DataFrame(new_table), use_container_width=True, hide_index=True)
-
-                    with col_v3:
-                        sel_n = edhrec_syn.new_cards[sel_new_idx]
-                        st.markdown(f"##### 🖼️ {sel_n.name}")
-                        st.image(get_card_image_url(sel_n.name), use_container_width=True)
-                        syn_b = f"+{sel_n.synergy:.0f}%" if sel_n.synergy > 0 else f"{sel_n.synergy:.0f}%"
-                        st.caption(f"**Sinergia:** `{syn_b}` | **CMC:** {sel_n.cmc:.0f} | **Tipo:** {sel_n.type_line}")
+            edhrec_html = render_moxfield_edhrec_html(edhrec_syn, get_card_image_url)
+            st.components.v1.html(edhrec_html, height=760, scrolling=True)
 
     with tab_mana_land:
         st.markdown("### 🎨 Densidad de Pips de Color vs Fuentes de Maná")
@@ -1301,16 +1166,25 @@ else:
         with st.expander(f"🌐 Ver Sugerencias Comunitarias (EDHREC) para {st.session_state.chosen_gen_cmdr}", expanded=False):
             edh_eng = get_edhrec_engine()
             raw_edh = edh_eng.fetch_edhrec_data(st.session_state.chosen_gen_cmdr)
-            if raw_edh.get("highsynergycards") or raw_edh.get("topcards"):
-                st.caption("Top cartas más sinérgicas y populares extraídas desde la base de datos de EDHREC:")
-                edh_cards_to_show = (raw_edh.get("highsynergycards", [])[:3] + raw_edh.get("topcards", [])[:3])
-                e_cols = st.columns(min(len(edh_cards_to_show), 6))
-                for e_i, e_c in enumerate(edh_cards_to_show):
-                    with e_cols[e_i % len(e_cols)]:
-                        st.image(get_card_image_url(e_c["name"]), use_container_width=True)
-                        st.markdown(f"**{e_c['name']}**")
-                        syn_val = e_c.get("synergy", 0)
-                        st.caption(f"Sinergia: `{syn_val:+.0%}`" if isinstance(syn_val, float) else f"Sinergia: `{syn_val}`")
+            
+            # Resolve commander colors for accurate WOTC filtering
+            from mtg_deck_optimizer.deckbuilder.archetype_database import CARD_METADATA_REGISTRY
+            cmdr_clean = ingestion_service.scryfall.clean_card_name(st.session_state.chosen_gen_cmdr).lower()
+            cmdr_entry = CARD_METADATA_REGISTRY.get(cmdr_clean)
+            if cmdr_entry:
+                cmdr_colors = cmdr_entry[1]
+            else:
+                c_meta = ingestion_service.scryfall.get_card_by_name(st.session_state.chosen_gen_cmdr)
+                cmdr_colors = (c_meta.color_identity if c_meta and c_meta.color_identity else ["W", "U", "B", "R", "G"])
+
+            edhrec_syn = edh_eng.filter_by_wotc_rules(raw_edh, cmdr_colors, int(gen_bracket))
+            
+            if edhrec_syn.high_synergy_cards or edhrec_syn.top_cards:
+                st.caption(f"Top cartas comunitarias filtradas para **{st.session_state.chosen_gen_cmdr}** (Bracket {gen_bracket}):")
+                edhrec_html = render_moxfield_edhrec_html(edhrec_syn, get_card_image_url)
+                st.components.v1.html(edhrec_html, height=620, scrolling=True)
+            else:
+                st.info("No se encontraron cartas de sinergia para este comandante.")
 
     # Foolproof UX: Action Button Locking
     has_gen_bracket = (gen_bracket is not None)
@@ -1382,15 +1256,9 @@ else:
         g_tab_all, g_tab_export = st.tabs(["🖼️ Galería Visual del Mazo Generado", "📦 Exportar Lista (Multi-Formato)"])
         
         with g_tab_all:
-            g_items = g_deck.commanders + g_deck.maindeck
-            for i in range(0, len(g_items), 5):
-                row_items = g_items[i:i + 5]
-                cols = st.columns(5)
-                for c_idx, it in enumerate(row_items):
-                    with cols[c_idx]:
-                        st.markdown(f"**{it.quantity}x {it.effective_name}**")
-                        st.image(get_card_image_url(it.card or it.effective_name), use_container_width=True)
-                        st.caption(f"{it.card.type_line if it.card else ''}")
+            st.caption("Pasa el cursor sobre cualquier carta para inspeccionar su arte y detalles en tiempo real:")
+            gen_gallery_html = render_moxfield_deck_html(g_deck, get_card_image_url)
+            st.components.v1.html(gen_gallery_html, height=760, scrolling=True)
 
         with g_tab_export:
             g_mox = DeckExporter.export_to_moxfield_text(g_deck)

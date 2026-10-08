@@ -186,3 +186,44 @@ class Deck(BaseModel):
     def items(self) -> List[DeckItem]:
         """Convenient accessor for all deck items across sections."""
         return self.get_all_items()
+
+    def get_moxfield_categorized_items(self) -> Dict[str, List[DeckItem]]:
+        """
+        Groups all maindeck and commander items into standard MTG/Moxfield categories:
+        Commander, Planeswalkers, Creatures, Instants, Sorceries, Artifacts, Enchantments, Battles, Lands.
+        """
+        cats = {
+            "Commander": list(self.commanders),
+            "Planeswalkers": [],
+            "Creatures": [],
+            "Instants": [],
+            "Sorceries": [],
+            "Artifacts": [],
+            "Enchantments": [],
+            "Battles": [],
+            "Lands": [],
+        }
+
+        for item in self.maindeck:
+            tl = (item.card.type_line if item.card else item.raw_name).lower()
+            if "land" in tl:
+                cats["Lands"].append(item)
+            elif "creature" in tl:
+                cats["Creatures"].append(item)
+            elif "planeswalker" in tl:
+                cats["Planeswalkers"].append(item)
+            elif "instant" in tl:
+                cats["Instants"].append(item)
+            elif "sorcery" in tl:
+                cats["Sorceries"].append(item)
+            elif "artifact" in tl:
+                cats["Artifacts"].append(item)
+            elif "enchantment" in tl:
+                cats["Enchantments"].append(item)
+            elif "battle" in tl:
+                cats["Battles"].append(item)
+            else:
+                cats["Sorceries"].append(item)
+
+        # Return only non-empty categories preserving standard Moxfield sort order
+        return {k: v for k, v in cats.items() if v}
